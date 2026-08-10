@@ -131,6 +131,8 @@ export default function Registration() {
             <option>Grade 4</option>
             <option>Grade 5</option>
             <option>Grade 6</option>
+            <option>Teacher</option>
+            <option>Non-Teaching Personel</option>
           </select>
 
           <button type="submit" disabled={loading}>
