@@ -1,0 +1,282 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+.registration-page {
+    width: 100%;
+    min-height: 100vh;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    position: relative;
+    padding: 30px;
+}
+
+.overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+}
+
+.registration-container {
+    position: relative;
+    z-index: 2;
+
+    width: 720px;
+    background: #fff;
+
+    border: 3px solid #2563eb;
+    border-radius: 3px;
+
+    padding: 45px 50px;
+
+    text-align: center;
+
+    box-shadow: 0 20px 40px rgba(0, 0, 0, .20);
+}
+
+
+.clock {
+    display: inline-block;
+
+    background: #1E3A8A;
+    color: white;
+
+    padding: 10px 22px;
+
+    border-radius: 3px;
+
+    font-size: 30px;
+    font-weight: bold;
+    letter-spacing: 2px;
+
+    margin-bottom: 25px;
+}
+
+
+.registration-container h1 {
+    color: #2563eb;
+    font-size: 34px;
+    margin-bottom: 5px;
+}
+
+.registration-container h3 {
+    color: #555;
+    font-size: 20px;
+    font-weight: 500;
+    margin-bottom: 15px;
+}
+
+.subtitle {
+    color: #666;
+    font-size: 15px;
+    margin-bottom: 35px;
+}
+
+
+form {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+input,
+select {
+    width: 100%;
+
+    padding: 16px;
+
+    border: 3px solid #2563eb;
+    border-radius: 3px;
+
+    outline: none;
+
+    font-size: 16px;
+
+    transition: .2s;
+}
+
+input:focus,
+select:focus {
+    border-color: #1E3A8A;
+}
+
+button {
+    width: 100%;
+
+    padding: 16px;
+
+    border: none;
+    border-radius: 3px;
+
+    background: #2563eb;
+    color: white;
+
+    font-size: 17px;
+    font-weight: bold;
+
+    transition: .2s;
+}
+
+button:hover {
+    background: #1E3A8A;
+}
+
+button:disabled {
+    opacity: .7;
+    cursor: not-allowed;
+}
+
+.reminders {
+    margin-top: 35px;
+    padding-top: 20px;
+
+    border-top: 1px solid #ddd;
+
+    text-align: left;
+}
+
+.reminders h4 {
+    color: #2563eb;
+    margin-bottom: 12px;
+    font-size: 18px;
+}
+
+.reminders ul {
+    padding-left: 22px;
+}
+
+.reminders li {
+    margin-bottom: 10px;
+    color: #444;
+    line-height: 1.5;
+}
+
+
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+
+    background: rgba(0, 0, 0, .60);
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    z-index: 9999;
+
+    animation: fadeIn .25s ease;
+}
+
+.success-modal {
+    width: 430px;
+
+    background: white;
+
+    border: 3px solid #2563eb;
+    border-radius: 3px;
+
+    padding: 35px;
+
+    text-align: center;
+
+    animation: popup .25s ease;
+}
+
+.checkmark {
+    width: 90px;
+    height: 90px;
+
+    margin: 0 auto 20px;
+
+    border-radius: 50%;
+
+    background: #22c55e;
+    color: white;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    font-size: 46px;
+    font-weight: bold;
+}
+
+.success-modal h2 {
+    color: #2563eb;
+    margin-bottom: 10px;
+}
+
+.success-modal p {
+    color: #555;
+    margin: 10px 0;
+    line-height: 1.5;
+}
+
+.success-modal h3 {
+    margin: 20px 0 30px;
+    color: #16a34a;
+    font-size: 30px;
+}
+
+.success-modal button {
+    width: 100%;
+}
+
+
+
+@keyframes popup {
+    from {
+        transform: scale(.85);
+        opacity: 0;
+    }
+
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+
+@media (max-width: 768px) {
+
+    .registration-container {
+        width: 95%;
+        padding: 30px;
+    }
+
+    .registration-container h1 {
+        font-size: 28px;
+    }
+
+    .registration-container h3 {
+        font-size: 18px;
+    }
+
+    .clock {
+        font-size: 22px;
+    }
+
+    .success-modal {
+        width: 90%;
+    }
+
+}
