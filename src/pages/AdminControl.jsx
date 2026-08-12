@@ -184,29 +184,27 @@ export default function AdminControl() {
   function exportPDF() {
     const doc = new jsPDF();
 
-    // 1. HEADER SECTION
-    doc.setFontSize(16);
-    doc.setFont("helvetica", "bold");
-    doc.text("HOLY FAMILY ACADEMY", 105, 15, { align: "center" });
-
-    doc.setFontSize(11);
+    // 1. HEADER SECTION (Simple 12pt Helvetica)
     doc.setFont("helvetica", "normal");
-    doc.text("Angeles City, Philippines", 105, 21, { align: "center" });
+    doc.setFontSize(12);
 
-    doc.setFontSize(13);
-    doc.setFont("helvetica", "bold");
-    doc.text("Internet Research Section Logs Report", 105, 28, {
+    doc.text("HOLY FAMILY ACADEMY", 105, 15, { align: "center" });
+    doc.text("Angeles City, Philippines", 105, 21, { align: "center" });
+    doc.text("Internet Research Section Logs Report", 105, 27, {
       align: "center",
     });
 
-    // Sub-info / Meta
-    doc.setFontSize(9);
-    doc.setFont("helvetica", "normal");
-    doc.text(`Generated Date: ${new Date().toLocaleDateString("en-PH")}`, 14, 36);
-    doc.text(`Total Filtered Records: ${analytics.filteredTotal}`, 14, 41);
-    doc.text(`Peak Usage Duration: ${analytics.peakHourText}`, 14, 46);
+    // Separator line under header
+    doc.setLineWidth(0.5);
+    doc.line(14, 32, 196, 32);
 
-    // 2. MAIN LOGS TABLE
+    // Metadata Section
+    doc.setFontSize(9);
+    doc.text(`Generated Date: ${new Date().toLocaleDateString("en-PH")}`, 14, 38);
+    doc.text(`Total Records: ${analytics.filteredTotal}`, 14, 43);
+    doc.text(`Peak Usage Duration: ${analytics.peakHourText}`, 14, 48);
+
+    // 2. MAIN LOGS TABLE (Clean Solid Black Styling)
     const tableBody = filteredLogs.map((log) => {
       const sessionInVal = log.session_in || log.created_at;
       const sessionOutVal = log.session_out;
@@ -221,33 +219,62 @@ export default function AdminControl() {
     });
 
     autoTable(doc, {
-      startY: 50,
+      startY: 53,
       head: [["Student Name", "Grade", "Date", "Session In", "Session Out"]],
       body: tableBody,
-      theme: "striped",
-      headStyles: { fillColor: [22, 101, 192] },
-      styles: { fontSize: 8 },
+      theme: "plain",
+      headStyles: {
+        fillColor: [0, 0, 0], // Solid Black Header
+        textColor: [255, 255, 255], // White Text
+        fontStyle: "bold",
+        fontSize: 9,
+      },
+      styles: {
+        fontSize: 8,
+        cellPadding: 3,
+        lineColor: [220, 220, 220],
+        lineWidth: 0.1,
+      },
     });
 
-    // 3. GRADE BREAKDOWN SUMMARY TABLE
-    const summaryY = doc.lastAutoTable.finalY + 10;
+    // 3. ENHANCED GRADE SUMMARY TABLE
+    const summaryY = doc.lastAutoTable.finalY + 12;
 
-    doc.setFontSize(11);
+    doc.setFontSize(10);
     doc.setFont("helvetica", "bold");
     doc.text("Logs Summary per Grade Level", 14, summaryY);
 
     const gradeSummaryData = Object.entries(analytics.gradeCounts).map(
-      ([grade, count]) => [grade, count]
+      ([grade, count]) => [
+        grade,
+        count,
+        `${((count / (analytics.filteredTotal || 1)) * 100).toFixed(1)}%`,
+      ]
     );
 
     autoTable(doc, {
       startY: summaryY + 4,
-      head: [["Grade Level", "Total Logs"]],
+      head: [["Grade Level", "Total Logs", "Percentage"]],
       body: gradeSummaryData,
-      theme: "grid",
-      headStyles: { fillColor: [60, 60, 60] },
-      styles: { fontSize: 8 },
-      tableWidth: 100, // Compact summary table width
+      theme: "plain",
+      headStyles: {
+        fillColor: [0, 0, 0], // Solid Black Header
+        textColor: [255, 255, 255],
+        fontStyle: "bold",
+        fontSize: 8,
+      },
+      styles: {
+        fontSize: 8,
+        cellPadding: 3,
+        lineColor: [220, 220, 220],
+        lineWidth: 0.1,
+      },
+      columnStyles: {
+        0: { cellWidth: 40 },
+        1: { cellWidth: 30, halign: "center" },
+        2: { cellWidth: 30, halign: "center" },
+      },
+      tableWidth: 100,
     });
 
     doc.save("Internet_Research_Section_Report.pdf");

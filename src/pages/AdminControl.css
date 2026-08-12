@@ -9,6 +9,7 @@
   --admin-danger: #dc2626;
   --admin-danger-hover: #b91c1c;
   --admin-success: #16a34a;
+  --admin-success-hover: #15803d;
   --admin-warning: #d97706;
   --admin-purple: #9333ea;
   --radius-sm: 4px;
@@ -138,6 +139,19 @@
 .toolbar button:hover {
   background: #f1f5f9;
   border-color: #cbd5e1;
+}
+
+/* Button Variants */
+.toolbar button[style*="background-color: #dc2626"],
+.toolbar button.btn-pdf {
+  background-color: var(--admin-danger) !important;
+  color: #ffffff !important;
+  border: none !important;
+}
+
+.toolbar button[style*="background-color: #dc2626"]:hover,
+.toolbar button.btn-pdf:hover {
+  background-color: var(--admin-danger-hover) !important;
 }
 
 /* Redesigned Table */
