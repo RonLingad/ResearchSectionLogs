@@ -9,11 +9,15 @@ export default function AdminControl() {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Filters
+  // Filters State
   const [search, setSearch] = useState("");
   const [gradeFilter, setGradeFilter] = useState("All");
   const [monthFilter, setMonthFilter] = useState("All");
   const [yearFilter, setYearFilter] = useState("All");
+
+  // Pagination State (20 items per page)
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
 
   useEffect(() => {
     fetchLogs();
@@ -48,12 +52,13 @@ export default function AdminControl() {
     return Array.from(years).sort((a, b) => b - a);
   }, [logs]);
 
-  // Reset all filters
+  // Reset all filters & reset pagination to Page 1
   const resetFilters = () => {
     setSearch("");
     setGradeFilter("All");
     setMonthFilter("All");
     setYearFilter("All");
+    setCurrentPage(1);
   };
 
   // Check if any filter is active
@@ -62,6 +67,12 @@ export default function AdminControl() {
     gradeFilter !== "All" ||
     monthFilter !== "All" ||
     yearFilter !== "All";
+
+  // Helper to handle filter state change and reset pagination to page 1
+  const handleFilterChange = (setter, value) => {
+    setter(value);
+    setCurrentPage(1);
+  };
 
   // ===============================
   // FILTERS LOGIC
@@ -96,6 +107,24 @@ export default function AdminControl() {
   }, [logs, search, gradeFilter, monthFilter, yearFilter]);
 
   // ===============================
+  // PAGINATION LOGIC
+  // ===============================
+
+  const totalPages = Math.ceil(filteredLogs.length / itemsPerPage) || 1;
+
+  const currentTableData = useMemo(() => {
+    const firstPageIndex = (currentPage - 1) * itemsPerPage;
+    const lastPageIndex = firstPageIndex + itemsPerPage;
+    return filteredLogs.slice(firstPageIndex, lastPageIndex);
+  }, [filteredLogs, currentPage, itemsPerPage]);
+
+  const handlePageChange = (page) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  // ===============================
   // ANALYTICS & PEAK HOURS LOGIC
   // ===============================
 
@@ -119,7 +148,6 @@ export default function AdminControl() {
       );
     }).length;
 
-    // Grade breakdown computation
     const gradeCounts = {};
     const hourCounts = {};
 
@@ -206,7 +234,7 @@ export default function AdminControl() {
       return {
         "Student Name": log.fullname ? log.fullname.toUpperCase() : "N/A",
         "Grade Level": log.grade ? log.grade.toUpperCase() : "N/A",
-        "Date": formatDate(sessionInVal),
+        Date: formatDate(sessionInVal),
         "Session In": formatTime(sessionInVal),
         "Session Out": formatTime(sessionOutVal),
       };
@@ -214,15 +242,13 @@ export default function AdminControl() {
 
     const worksheet = XLSX.utils.json_to_sheet(excelData);
 
-    // Auto-fit column widths
-    const columnWidths = [
-      { wch: 28 }, // Student Name
-      { wch: 15 }, // Grade
-      { wch: 15 }, // Date
-      { wch: 15 }, // Session In
-      { wch: 15 }, // Session Out
+    worksheet["!cols"] = [
+      { wch: 28 },
+      { wch: 15 },
+      { wch: 15 },
+      { wch: 15 },
+      { wch: 15 },
     ];
-    worksheet["!cols"] = columnWidths;
 
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Logs");
@@ -243,37 +269,36 @@ export default function AdminControl() {
 
     const doc = new jsPDF();
 
-    // Header Title Block
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(13);
+    // 1. Header Title Block (Arial 12pt Bold)
+    doc.setFont("arial", "bold");
+    doc.setFontSize(12);
     doc.text("HOLY FAMILY ACADEMY", 105, 14, { align: "center" });
 
-    doc.setFont("helvetica", "normal");
+    doc.setFont("arial", "normal");
     doc.setFontSize(10);
-    doc.text("Angeles City, Philippines", 105, 20, { align: "center" });
-    doc.setFont("helvetica", "bold");
-    doc.text("Internet Research Section Logs Report", 105, 26, {
+    doc.text("Internet Research Section Logs Report", 105, 20, {
       align: "center",
     });
 
-    // Horizontal Rule
-    doc.setDrawColor(200, 200, 200);
+    // Solid Divider Line
+    doc.setDrawColor(0, 0, 0);
     doc.setLineWidth(0.5);
-    doc.line(14, 30, 196, 30);
+    doc.line(14, 24, 196, 24);
 
-    // Report Metadata
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8.5);
-    doc.text(`Generated: ${new Date().toLocaleString("en-PH")}`, 14, 36);
-    doc.text(`Total Records Displayed: ${analytics.filteredTotal}`, 14, 41);
-    doc.text(`Peak Usage Duration: ${analytics.peakHourText}`, 14, 46);
+    // 2. Metadata & Analytics
+    doc.setFont("arial", "normal");
+    doc.setFontSize(10);
+    doc.text(`Generated: ${new Date().toLocaleString("en-PH")}`, 14, 30);
+    doc.text(`Total Records Displayed: ${analytics.filteredTotal}`, 14, 35);
+    doc.text(`Peak Usage Duration: ${analytics.peakHourText}`, 14, 40);
 
-    // Table Content Setup
-    const tableBody = filteredLogs.map((log) => {
+    // 3. Main Table Body Construction
+    const tableBody = filteredLogs.map((log, index) => {
       const sessionInVal = log.session_in || log.created_at;
       const sessionOutVal = log.session_out;
 
       return [
+        index + 1,
         log.fullname ? log.fullname.toUpperCase() : "-",
         log.grade ? log.grade.toUpperCase() : "-",
         formatDate(sessionInVal),
@@ -282,40 +307,44 @@ export default function AdminControl() {
       ];
     });
 
-    // Logs Table
+    // Main Logs Table - Font Size 11 & Arial Font
     autoTable(doc, {
-      startY: 51,
-      head: [["Student Name", "Grade", "Date", "Session In", "Session Out"]],
+      startY: 45,
+      head: [["#", "Student Name", "Grade", "Date", "Session In", "Session Out"]],
       body: tableBody,
-      theme: "plain",
-      headStyles: {
-        fillColor: [15, 23, 42], // Slate 900
-        textColor: [255, 255, 255],
-        fontStyle: "bold",
-        fontSize: 8.5,
-      },
+      theme: "grid",
       styles: {
-        fontSize: 8,
-        cellPadding: 2.5,
-        lineColor: [226, 232, 240],
+        font: "arial",
+        fontSize: 10,
+        cellPadding: 3,
+        textColor: [0, 0, 0],
+        lineColor: [0, 0, 0],
         lineWidth: 0.1,
       },
-      alternateRowStyles: {
-        fillColor: [248, 250, 252],
+      headStyles: {
+        font: "arial",
+        fontSize: 11,
+        fillColor: [240, 240, 240],
+        textColor: [0, 0, 0],
+        fontStyle: "bold",
+        lineWidth: 0.2,
+      },
+      columnStyles: {
+        0: { cellWidth: 12, halign: "center" },
       },
     });
 
-    // Grade Level Breakdown Summary Block
+    // 4. Grade Level Summary Breakdown Table
     let finalY = doc.lastAutoTable.finalY + 10;
 
     // Check if new page is needed for summary table
-    if (finalY > 230) {
+    if (finalY > 220) {
       doc.addPage();
       finalY = 20;
     }
 
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(10);
+    doc.setFont("arial", "bold");
+    doc.setFontSize(11);
     doc.text("Grade Level Usage Summary", 14, finalY);
 
     const gradeSummaryData = Object.entries(analytics.gradeCounts).map(
@@ -328,41 +357,40 @@ export default function AdminControl() {
 
     autoTable(doc, {
       startY: finalY + 4,
-      head: [["Grade Level", "Total Logs", "Share"]],
+      head: [["Grade Level / Role", "Total Logs", "Percentage (%)"]],
       body: gradeSummaryData,
-      theme: "plain",
-      headStyles: {
-        fillColor: [15, 23, 42],
-        textColor: [255, 255, 255],
-        fontStyle: "bold",
-        fontSize: 8,
-      },
+      theme: "grid",
       styles: {
-        fontSize: 8,
-        cellPadding: 2.5,
-        lineColor: [226, 232, 240],
+        font: "arial",
+        fontSize: 11,
+        cellPadding: 3,
+        textColor: [0, 0, 0],
+        lineColor: [0, 0, 0],
         lineWidth: 0.1,
       },
-      columnStyles: {
-        0: { cellWidth: 50 },
-        1: { cellWidth: 30, halign: "center" },
-        2: { cellWidth: 30, halign: "center" },
+      headStyles: {
+        font: "arial",
+        fontSize: 11,
+        fillColor: [240, 240, 240],
+        textColor: [0, 0, 0],
+        fontStyle: "bold",
+        lineWidth: 0.2,
       },
-      tableWidth: 110,
+      columnStyles: {
+        0: { cellWidth: 55 },
+        1: { cellWidth: 30, halign: "center" },
+        2: { cellWidth: 35, halign: "center" },
+      },
+      tableWidth: 120,
     });
 
-    // Footer Page Numbers
+    // 5. Page Numbers Footer
     const pageCount = doc.internal.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
       doc.setPage(i);
-      doc.setFontSize(8);
-      doc.setFont("helvetica", "normal");
-      doc.text(
-        `Page ${i} of ${pageCount}`,
-        196,
-        287,
-        { align: "right" }
-      );
+      doc.setFont("arial", "normal");
+      doc.setFontSize(10);
+      doc.text(`Page ${i} of ${pageCount}`, 196, 287, { align: "right" });
     }
 
     const dateStamp = new Date().toISOString().split("T")[0];
@@ -404,10 +432,9 @@ export default function AdminControl() {
       </div>
 
       {/* ===========================
-            ENHANCED SINGLE-ROW TOOLBAR
+            TOOLBAR & FILTERS
       =========================== */}
       <div className="toolbar">
-        {/* Left Side: Filter Controls */}
         <div className="toolbar-filters">
           <div className="search-wrapper">
             <svg
@@ -428,13 +455,13 @@ export default function AdminControl() {
               type="text"
               placeholder="Search by student name..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => handleFilterChange(setSearch, e.target.value)}
             />
             {search && (
               <button
                 type="button"
                 className="clear-search-btn"
-                onClick={() => setSearch("")}
+                onClick={() => handleFilterChange(setSearch, "")}
                 title="Clear search"
               >
                 ✕
@@ -444,7 +471,7 @@ export default function AdminControl() {
 
           <select
             value={gradeFilter}
-            onChange={(e) => setGradeFilter(e.target.value)}
+            onChange={(e) => handleFilterChange(setGradeFilter, e.target.value)}
           >
             <option value="All">All Grades</option>
             <option value="Grade 1">Grade 1</option>
@@ -453,11 +480,15 @@ export default function AdminControl() {
             <option value="Grade 4">Grade 4</option>
             <option value="Grade 5">Grade 5</option>
             <option value="Grade 6">Grade 6</option>
+            <option value="Teacher">Teacher</option>
+            <option value="Non-Teaching Personnel">
+              Non-Teaching Personnel
+            </option>
           </select>
 
           <select
             value={monthFilter}
-            onChange={(e) => setMonthFilter(e.target.value)}
+            onChange={(e) => handleFilterChange(setMonthFilter, e.target.value)}
           >
             <option value="All">All Months</option>
             <option value="1">January</option>
@@ -476,7 +507,7 @@ export default function AdminControl() {
 
           <select
             value={yearFilter}
-            onChange={(e) => setYearFilter(e.target.value)}
+            onChange={(e) => handleFilterChange(setYearFilter, e.target.value)}
           >
             <option value="All">All Years</option>
             {availableYears.map((year) => (
@@ -498,7 +529,6 @@ export default function AdminControl() {
           )}
         </div>
 
-        {/* Right Side: Quick Action Buttons */}
         <div className="toolbar-actions">
           <button
             type="button"
@@ -570,15 +600,19 @@ export default function AdminControl() {
       </div>
 
       {/* ===========================
-            LOGS TABLE
+            LOGS TABLE METADATA
       =========================== */}
       <div className="table-header-info">
         <span>
-          Showing <strong>{analytics.filteredTotal}</strong> of{" "}
-          <strong>{analytics.total}</strong> records
+          Showing <strong>{currentTableData.length}</strong> of{" "}
+          <strong>{analytics.filteredTotal}</strong> records (Page {currentPage}{" "}
+          of {totalPages})
         </span>
       </div>
 
+      {/* ===========================
+            LOGS TABLE
+      =========================== */}
       <div className="table-container">
         <table>
           <thead>
@@ -595,17 +629,17 @@ export default function AdminControl() {
             {loading ? (
               <tr>
                 <td colSpan="5" className="table-status-cell">
-                  <div className="spinner"></div> Loading records...
+                  Loading records...
                 </td>
               </tr>
-            ) : filteredLogs.length === 0 ? (
+            ) : currentTableData.length === 0 ? (
               <tr>
                 <td colSpan="5" className="table-status-cell">
                   No records match the selected filters.
                 </td>
               </tr>
             ) : (
-              filteredLogs.map((log) => {
+              currentTableData.map((log) => {
                 const sessionInTime = log.session_in || log.created_at;
                 const sessionOutTime = log.session_out;
 
@@ -629,6 +663,45 @@ export default function AdminControl() {
           </tbody>
         </table>
       </div>
+
+      {/* ===========================
+            PAGINATION CONTROLS (20 per page)
+      =========================== */}
+      {filteredLogs.length > itemsPerPage && (
+        <div className="pagination-wrapper">
+          <button
+            className="pagination-btn"
+            disabled={currentPage === 1}
+            onClick={() => handlePageChange(currentPage - 1)}
+          >
+            &laquo; Previous
+          </button>
+
+          <div className="pagination-numbers">
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+              (pageNum) => (
+                <button
+                  key={pageNum}
+                  className={`pagination-number ${
+                    currentPage === pageNum ? "active" : ""
+                  }`}
+                  onClick={() => handlePageChange(pageNum)}
+                >
+                  {pageNum}
+                </button>
+              )
+            )}
+          </div>
+
+          <button
+            className="pagination-btn"
+            disabled={currentPage === totalPages}
+            onClick={() => handlePageChange(currentPage + 1)}
+          >
+            Next &raquo;
+          </button>
+        </div>
+      )}
     </div>
   );
 }

@@ -396,3 +396,66 @@ tbody tr:hover {
     width: 100%;
   }
 }
+/* Pagination Styling */
+.pagination-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  margin-top: 20px;
+  padding: 10px 0;
+}
+
+.pagination-btn {
+  padding: 8px 16px;
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background-color: #1e3a8a;
+  color: #ffffff;
+  border-color: #1e3a8a;
+}
+
+.pagination-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pagination-numbers {
+  display: flex;
+  gap: 6px;
+}
+
+.pagination-number {
+  min-width: 32px;
+  height: 32px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pagination-number.active {
+  background-color: #2563eb;
+  color: #ffffff;
+  border-color: #2563eb;
+}
+
+.pagination-number:hover:not(.active) {
+  background-color: #f1f5f9;
+}
