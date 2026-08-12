@@ -152,7 +152,7 @@ export default function Registration() {
                   <input
                     id="fullname"
                     type="text"
-                    placeholder="e.g. Juan De La Cruz"
+                    placeholder="Juan De La Cruz"
                     value={fullname}
                     onChange={(e) => setFullname(e.target.value)}
                     required
@@ -266,7 +266,7 @@ export default function Registration() {
               </li>
               <li>
                 <span className="rule-num">5</span>
-                <span>Save files to cloud storage or flash drive before leaving.</span>
+                <span>Save files to cloud storage before leaving.</span>
               </li>
               <li>
                 <span className="rule-num">6</span>
