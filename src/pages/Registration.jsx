@@ -7,6 +7,7 @@ export default function Registration() {
   const [fullname, setFullname] = useState("");
   const [grade, setGrade] = useState("");
   const [currentTime, setCurrentTime] = useState("");
+  const [currentDate, setCurrentDate] = useState("");
 
   const [loading, setLoading] = useState(false);
 
@@ -14,7 +15,7 @@ export default function Registration() {
   const [endTime, setEndTime] = useState("");
 
   // ==========================
-  // Live Clock
+  // Live Clock & Date
   // ==========================
   useEffect(() => {
     const updateClock = () => {
@@ -28,10 +29,18 @@ export default function Registration() {
           hour12: true,
         })
       );
+
+      setCurrentDate(
+        now.toLocaleDateString("en-PH", {
+          weekday: "short",
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        })
+      );
     };
 
     updateClock();
-
     const interval = setInterval(updateClock, 1000);
 
     return () => clearInterval(interval);
@@ -44,24 +53,20 @@ export default function Registration() {
     e.preventDefault();
 
     if (!fullname.trim() || !grade) {
-      alert("Please complete all required fields.");
+      alert("Please enter your name and select a grade level.");
       return;
     }
 
     setLoading(true);
 
-    // Current local time when student hits submit
     const sessionIn = new Date();
-
-    // Session End (+15 Minutes)
+    // Session duration: +15 Minutes
     const sessionOut = new Date(sessionIn.getTime() + 15 * 60 * 1000);
 
     const { error } = await supabase.from("logs").insert([
       {
         fullname: fullname.trim(),
         grade: grade,
-
-        // Pass native Date objects or standard ISO string
         session_in: sessionIn.toISOString(),
         session_out: sessionOut.toISOString(),
       },
@@ -87,10 +92,6 @@ export default function Registration() {
 
     setFullname("");
     setGrade("");
-
-    setTimeout(() => {
-      setShowModal(false);
-    }, 5000);
   };
 
   return (
@@ -103,71 +104,218 @@ export default function Registration() {
       <div className="overlay"></div>
 
       <div className="registration-container">
-        <div className="clock">{currentTime}</div>
+        {/* Header Section */}
+        <div className="registration-header">
+          <div className="clock-pill">
+            <div className="live-indicator">
+              <span className="dot"></span>
+              LIVE
+            </div>
+            <div className="clock-details">
+              <span className="clock-time">{currentTime}</span>
+              <span className="clock-date">{currentDate}</span>
+            </div>
+          </div>
 
-        <h1>Internet and Research Section</h1>
+          <h1 className="title">Internet & Research Section</h1>
+          <p className="subtitle">
+            Student Computer Access Registration
+          </p>
+        </div>
 
-        <h3>Usage Registration</h3>
-        <p className="subtitle">
-          Please enter your information before using a computer.
-        </p>
+        {/* Content Layout: Form & Reminders */}
+        <div className="registration-content">
+          {/* Form Side */}
+          <div className="form-card">
+            <h3>Usage Registration</h3>
+            <p className="form-instruction">
+              Please complete your details to initiate a computer workstation session.
+            </p>
 
-        <form onSubmit={handleRegister}>
-          <input
-            type="text"
-            placeholder="Enter your full name"
-            value={fullname}
-            onChange={(e) => setFullname(e.target.value)}
-          />
+            <form onSubmit={handleRegister}>
+              <div className="input-group">
+                <label htmlFor="fullname">Full Name</label>
+                <div className="input-field-wrapper">
+                  <svg
+                    className="input-icon"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                    />
+                  </svg>
+                  <input
+                    id="fullname"
+                    type="text"
+                    placeholder="e.g. Juan De La Cruz"
+                    value={fullname}
+                    onChange={(e) => setFullname(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
 
-          <select
-            value={grade}
-            onChange={(e) => setGrade(e.target.value)}
-          >
-            <option value="">Select Grade Level</option>
-            <option>Grade 1</option>
-            <option>Grade 2</option>
-            <option>Grade 3</option>
-            <option>Grade 4</option>
-            <option>Grade 5</option>
-            <option>Grade 6</option>
-            <option>Teacher</option>
-            <option>Non-Teaching Personel</option>
-          </select>
+              <div className="input-group">
+                <label htmlFor="grade">Grade / Role</label>
+                <div className="input-field-wrapper">
+                  <svg
+                    className="input-icon"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                    />
+                  </svg>
+                  <select
+                    id="grade"
+                    value={grade}
+                    onChange={(e) => setGrade(e.target.value)}
+                    required
+                  >
+                    <option value="">Select Option...</option>
+                    <option value="Grade 1">Grade 1</option>
+                    <option value="Grade 2">Grade 2</option>
+                    <option value="Grade 3">Grade 3</option>
+                    <option value="Grade 4">Grade 4</option>
+                    <option value="Grade 5">Grade 5</option>
+                    <option value="Grade 6">Grade 6</option>
+                    <option value="Teacher">Teacher</option>
+                    <option value="Non-Teaching Personnel">
+                      Non-Teaching Personnel
+                    </option>
+                  </select>
+                </div>
+              </div>
 
-          <button type="submit" disabled={loading}>
-            {loading ? "Registering..." : "Register"}
-          </button>
-        </form>
+              <button
+                type="submit"
+                className="submit-btn"
+                disabled={loading}
+              >
+                {loading ? (
+                  <span className="btn-loading">
+                    <span className="btn-spinner"></span> Processing...
+                  </span>
+                ) : (
+                  <>
+                    <span>Register Workstation</span>
+                    <svg
+                      className="btn-arrow"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M14 5l7 7m0 0l-7 7m7-7H3"
+                      />
+                    </svg>
+                  </>
+                )}
+              </button>
+            </form>
+          </div>
 
-        <div className="reminders">
-          <h4>Reminders</h4>
+          {/* Laboratory Guidelines Side */}
+          <div className="reminders-card">
+            <div className="reminders-header">
+              <svg
+                className="reminder-icon"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              <h4>Laboratory Guidelines</h4>
+            </div>
 
-          <ul>
-            <li>Register before using the computer.</li>
-            <li>Handle all equipment with care.</li>
-            <li>No food or drinks inside the laboratory.</li>
-            <li>Save your files before leaving.</li>
-            <li>Let the officer in charge assign a computer.</li>
-            <li>Log out after using the computer.</li>
-          </ul>
+            <ul className="reminder-list">
+              <li>
+                <span className="rule-num">1</span>
+                <span>Register at the station before using any computer.</span>
+              </li>
+              <li>
+                <span className="rule-num">2</span>
+                <span>Let the officer-in-charge assign your workstation.</span>
+              </li>
+              <li>
+                <span className="rule-num">3</span>
+                <span>Handle all equipment with care and cleanliness.</span>
+              </li>
+              <li>
+                <span className="rule-num">4</span>
+                <span>Strictly no food or drinks inside the laboratory.</span>
+              </li>
+              <li>
+                <span className="rule-num">5</span>
+                <span>Save files to cloud storage or flash drive before leaving.</span>
+              </li>
+              <li>
+                <span className="rule-num">6</span>
+                <span>Log out and clean your work area when finished.</span>
+              </li>
+            </ul>
+          </div>
         </div>
       </div>
 
+      {/* Confirmation Success Modal */}
       {showModal && (
-        <div className="modal-overlay">
-          <div className="success-modal">
-            <div className="checkmark">✔</div>
+        <div className="modal-overlay" onClick={() => setShowModal(false)}>
+          <div
+            className="success-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="checkmark-wrapper">
+              <svg
+                className="checkmark-svg"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="3"
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+            </div>
 
             <h2>Registration Successful!</h2>
+            <p className="modal-subtext">
+              You may now proceed to your assigned workstation.
+            </p>
 
-            <p>You may now use the computer.</p>
+            <div className="session-card">
+              <span className="session-label">Your Session Expires At</span>
+              <span className="session-time">{endTime}</span>
+            </div>
 
-            <p>Your session ends at</p>
-
-            <h3>{endTime}</h3>
-
-            <button onClick={() => setShowModal(false)}>Continue</button>
+            <button
+              className="modal-close-btn"
+              onClick={() => setShowModal(false)}
+            >
+              Start Session
+            </button>
           </div>
         </div>
       )}

@@ -12,14 +12,14 @@
   --admin-success-hover: #15803d;
   --admin-warning: #d97706;
   --admin-purple: #9333ea;
-  --radius-sm: 4px;
+  --radius-sm: 6px;
 }
 
 .admin-page {
   padding: 24px;
-  max-width: 1200px;
+  max-width: 1280px;
   margin: 0 auto;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   color: var(--admin-text-main);
   background-color: var(--admin-bg);
   min-height: 100vh;
@@ -85,48 +85,128 @@
   letter-spacing: 0.5px;
 }
 
-/* Toolbar Controls */
+/* ====================================
+   ENHANCED SINGLE-ROW TOOLBAR
+==================================== */
 .toolbar {
   display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
+  flex-direction: row;
   align-items: center;
-  margin-bottom: 20px;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
   background: var(--admin-card);
-  padding: 12px 16px;
+  padding: 10px 14px;
   border: 1px solid var(--admin-border);
   border-radius: var(--radius-sm);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
 }
 
-.toolbar input[type="text"],
-.toolbar select {
-  padding: 9px 12px;
-  font-size: 14px;
+.toolbar-filters {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  flex-wrap: wrap;
+}
+
+.toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Search input wrapper */
+.search-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 220px;
+  flex: 1;
+  max-width: 320px;
+}
+
+.search-icon {
+  position: absolute;
+  left: 10px;
+  width: 16px;
+  height: 16px;
+  color: var(--admin-text-muted);
+  pointer-events: none;
+}
+
+.search-wrapper input[type="text"] {
+  width: 100%;
+  padding: 8px 30px 8px 32px;
+  font-size: 13.5px;
   border: 1px solid var(--admin-border);
   border-radius: var(--radius-sm);
   background: #ffffff;
   color: var(--admin-text-main);
   outline: none;
-  transition: border-color 0.15s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-.toolbar input[type="text"] {
-  flex: 1;
-  min-width: 200px;
+.search-wrapper input[type="text"]:focus {
+  border-color: var(--admin-primary);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
 }
 
-.toolbar input[type="text"]:focus,
+.clear-search-btn {
+  position: absolute;
+  right: 8px;
+  background: transparent;
+  border: none;
+  color: var(--admin-text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 2px 4px;
+}
+
+/* Toolbar Select Dropdowns */
+.toolbar select {
+  padding: 8px 12px;
+  font-size: 13.5px;
+  border: 1px solid var(--admin-border);
+  border-radius: var(--radius-sm);
+  background: #ffffff;
+  color: var(--admin-text-main);
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
 .toolbar select:focus {
   border-color: var(--admin-primary);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
 }
 
-.toolbar select {
+/* Toolbar Buttons */
+.btn-reset {
+  background: transparent;
+  border: 1px dashed #cbd5e1;
+  color: var(--admin-text-muted);
+  padding: 7px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: var(--radius-sm);
   cursor: pointer;
+  transition: all 0.15s ease;
 }
 
-.toolbar button {
-  padding: 9px 16px;
-  font-size: 14px;
+.btn-reset:hover {
+  background: #f1f5f9;
+  color: var(--admin-text-main);
+  border-style: solid;
+}
+
+.btn-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 14px;
+  font-size: 13.5px;
   font-weight: 600;
   border-radius: var(--radius-sm);
   cursor: pointer;
@@ -134,27 +214,69 @@
   background: #ffffff;
   color: var(--admin-text-main);
   transition: all 0.15s ease;
+  white-space: nowrap;
 }
 
-.toolbar button:hover {
+.btn-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.spin {
+  animation: spinAnimation 1s linear infinite;
+}
+
+@keyframes spinAnimation {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Refresh Button */
+.btn-refresh:hover {
   background: #f1f5f9;
   border-color: #cbd5e1;
 }
 
-/* Button Variants */
-.toolbar button[style*="background-color: #dc2626"],
-.toolbar button.btn-pdf {
-  background-color: var(--admin-danger) !important;
-  color: #ffffff !important;
-  border: none !important;
+/* Excel Export Button */
+.btn-excel {
+  background-color: var(--admin-success);
+  color: #ffffff;
+  border: 1px solid var(--admin-success);
 }
 
-.toolbar button[style*="background-color: #dc2626"]:hover,
-.toolbar button.btn-pdf:hover {
-  background-color: var(--admin-danger-hover) !important;
+.btn-excel:hover {
+  background-color: var(--admin-success-hover);
+  border-color: var(--admin-success-hover);
 }
 
-/* Redesigned Table */
+/* PDF Export Button */
+.btn-pdf {
+  background-color: var(--admin-danger);
+  color: #ffffff;
+  border: 1px solid var(--admin-danger);
+}
+
+.btn-pdf:hover {
+  background-color: var(--admin-danger-hover);
+  border-color: var(--admin-danger-hover);
+}
+
+/* ====================================
+   TABLE SECTION & BADGES
+==================================== */
+.table-header-info {
+  display: flex;
+  justify-content: flex-end;
+  font-size: 12.5px;
+  color: var(--admin-text-muted);
+  margin-bottom: 8px;
+  padding: 0 4px;
+}
+
 .table-container {
   background: var(--admin-card);
   border: 1px solid var(--admin-border);
@@ -195,16 +317,82 @@ tbody tr:hover {
   background: #f8fafc;
 }
 
-/* Responsiveness */
-@media (max-width: 768px) {
+.student-name {
+  font-weight: 600;
+  color: var(--admin-text-main);
+}
+
+.badge-grade {
+  display: inline-block;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 4px;
+  background: #f1f5f9;
+  color: #334155;
+  border: 1px solid #e2e8f0;
+}
+
+.table-status-cell {
+  text-align: center;
+  padding: 32px !important;
+  color: var(--admin-text-muted);
+}
+
+/* Loader */
+.spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(0, 0, 0, 0.1);
+  border-left-color: var(--admin-primary);
+  border-radius: 50%;
+  animation: spinAnimation 0.8s linear infinite;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+/* ====================================
+   RESPONSIVENESS
+==================================== */
+@media (max-width: 960px) {
   .toolbar {
     flex-direction: column;
     align-items: stretch;
   }
 
-  .toolbar input[type="text"],
+  .toolbar-filters {
+    width: 100%;
+  }
+
+  .search-wrapper {
+    max-width: 100%;
+    min-width: 100%;
+  }
+
+  .toolbar-actions {
+    width: 100%;
+    justify-content: flex-end;
+    margin-top: 4px;
+  }
+}
+
+@media (max-width: 600px) {
+  .toolbar-filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
   .toolbar select,
-  .toolbar button {
+  .btn-reset {
+    width: 100%;
+  }
+
+  .toolbar-actions {
+    flex-direction: column;
+  }
+
+  .btn-action {
     width: 100%;
   }
 }

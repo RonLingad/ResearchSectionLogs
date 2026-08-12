@@ -1,282 +1,467 @@
 * {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-    font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
 .registration-page {
-    width: 100%;
-    min-height: 100vh;
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-
-    display: flex;
-    justify-content: center;
-    align-items: center;
-
-    position: relative;
-    padding: 30px;
+  width: 100%;
+  min-height: 100vh;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  padding: 30px 20px;
 }
 
+/* Background Overlay */
 .overlay {
-    position: absolute;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.45);
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(15, 23, 42, 0.78) 0%,
+    rgba(30, 58, 138, 0.75) 100%
+  );
+  backdrop-filter: blur(4px);
 }
 
+/* Main Container Card */
 .registration-container {
-    position: relative;
-    z-index: 2;
-
-    width: 720px;
-    background: #fff;
-
-    border: 3px solid #2563eb;
-    border-radius: 3px;
-
-    padding: 45px 50px;
-
-    text-align: center;
-
-    box-shadow: 0 20px 40px rgba(0, 0, 0, .20);
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 920px;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 40px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
 }
 
-
-.clock {
-    display: inline-block;
-
-    background: #1E3A8A;
-    color: white;
-
-    padding: 10px 22px;
-
-    border-radius: 3px;
-
-    font-size: 30px;
-    font-weight: bold;
-    letter-spacing: 2px;
-
-    margin-bottom: 25px;
+/* ====================================
+   HEADER & LIVE CLOCK
+==================================== */
+.registration-header {
+  text-align: center;
+  margin-bottom: 32px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid #e2e8f0;
 }
 
-
-.registration-container h1 {
-    color: #2563eb;
-    font-size: 34px;
-    margin-bottom: 5px;
+.clock-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  background: #1e3a8a;
+  color: #ffffff;
+  padding: 8px 18px;
+  border-radius: 9999px;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 12px rgba(30, 58, 138, 0.25);
 }
 
-.registration-container h3 {
-    color: #555;
-    font-size: 20px;
-    font-weight: 500;
-    margin-bottom: 15px;
+.live-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  background: rgba(255, 255, 255, 0.15);
+  padding: 3px 8px;
+  border-radius: 12px;
 }
 
-.subtitle {
-    color: #666;
-    font-size: 15px;
-    margin-bottom: 35px;
+.dot {
+  width: 7px;
+  height: 7px;
+  background-color: #22c55e;
+  border-radius: 50%;
+  box-shadow: 0 0 8px #22c55e;
+  animation: pulseDot 1.5s infinite;
 }
 
+@keyframes pulseDot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
+}
+
+.clock-details {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.clock-time {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.clock-date {
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+.registration-header .title {
+  color: #1e3a8a;
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  margin-bottom: 4px;
+}
+
+.registration-header .subtitle {
+  color: #64748b;
+  font-size: 14.5px;
+  font-weight: 500;
+}
+
+/* ====================================
+   CONTENT GRID: FORM & REMINDERS
+==================================== */
+.registration-content {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 32px;
+  align-items: start;
+}
+
+/* Form Card Left */
+.form-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-card h3 {
+  color: #0f172a;
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.form-instruction {
+  color: #64748b;
+  font-size: 13px;
+  margin-bottom: 20px;
+}
 
 form {
-    display: flex;
-    flex-direction: column;
-    gap: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+}
+
+.input-group label {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #334155;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.input-field-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-icon {
+  position: absolute;
+  left: 14px;
+  width: 18px;
+  height: 18px;
+  color: #94a3b8;
+  pointer-events: none;
 }
 
 input,
 select {
-    width: 100%;
-
-    padding: 16px;
-
-    border: 3px solid #2563eb;
-    border-radius: 3px;
-
-    outline: none;
-
-    font-size: 16px;
-
-    transition: .2s;
+  width: 100%;
+  padding: 12px 14px 12px 42px;
+  font-size: 14.5px;
+  color: #0f172a;
+  background: #f8fafc;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px;
+  outline: none;
+  transition: all 0.2s ease;
 }
 
 input:focus,
 select:focus {
-    border-color: #1E3A8A;
+  background: #ffffff;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
 }
 
-button {
-    width: 100%;
-
-    padding: 16px;
-
-    border: none;
-    border-radius: 3px;
-
-    background: #2563eb;
-    color: white;
-
-    font-size: 17px;
-    font-weight: bold;
-
-    transition: .2s;
+select {
+  cursor: pointer;
 }
 
-button:hover {
-    background: #1E3A8A;
+.submit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 13px 20px;
+  margin-top: 8px;
+  background: #2563eb;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
 }
 
-button:disabled {
-    opacity: .7;
-    cursor: not-allowed;
+.submit-btn:hover {
+  background: #1d4ed8;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
 }
 
-.reminders {
-    margin-top: 35px;
-    padding-top: 20px;
-
-    border-top: 1px solid #ddd;
-
-    text-align: left;
+.submit-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
 }
 
-.reminders h4 {
-    color: #2563eb;
-    margin-bottom: 12px;
-    font-size: 18px;
+.btn-arrow {
+  width: 18px;
+  height: 18px;
+  transition: transform 0.2s ease;
 }
 
-.reminders ul {
-    padding-left: 22px;
+.submit-btn:hover .btn-arrow {
+  transform: translateX(3px);
 }
 
-.reminders li {
-    margin-bottom: 10px;
-    color: #444;
-    line-height: 1.5;
+.btn-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
+.btn-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
 
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Reminders Card Right */
+.reminders-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 20px 22px;
+}
+
+.reminders-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  color: #1e3a8a;
+}
+
+.reminder-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.reminders-header h4 {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.reminder-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.reminder-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13px;
+  color: #475569;
+  line-height: 1.45;
+}
+
+.rule-num {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  background: #e0e7ff;
+  color: #3730a3;
+  font-size: 11px;
+  font-weight: 800;
+  border-radius: 50%;
+  margin-top: 1px;
+}
+
+/* ====================================
+   CONFIRMATION MODAL
+==================================== */
 .modal-overlay {
-    position: fixed;
-    inset: 0;
-
-    background: rgba(0, 0, 0, .60);
-
-    display: flex;
-    justify-content: center;
-    align-items: center;
-
-    z-index: 9999;
-
-    animation: fadeIn .25s ease;
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(4px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  padding: 20px;
+  animation: fadeIn 0.2s ease-out;
 }
 
 .success-modal {
-    width: 430px;
-
-    background: white;
-
-    border: 3px solid #2563eb;
-    border-radius: 3px;
-
-    padding: 35px;
-
-    text-align: center;
-
-    animation: popup .25s ease;
+  width: 100%;
+  max-width: 420px;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 32px 28px;
+  text-align: center;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+  animation: popup 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.checkmark {
-    width: 90px;
-    height: 90px;
+.checkmark-wrapper {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 18px;
+  border-radius: 50%;
+  background: #dcfce7;
+  color: #16a34a;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
 
-    margin: 0 auto 20px;
-
-    border-radius: 50%;
-
-    background: #22c55e;
-    color: white;
-
-    display: flex;
-    justify-content: center;
-    align-items: center;
-
-    font-size: 46px;
-    font-weight: bold;
+.checkmark-svg {
+  width: 38px;
+  height: 38px;
 }
 
 .success-modal h2 {
-    color: #2563eb;
-    margin-bottom: 10px;
+  color: #0f172a;
+  font-size: 20px;
+  font-weight: 800;
+  margin-bottom: 6px;
 }
 
-.success-modal p {
-    color: #555;
-    margin: 10px 0;
-    line-height: 1.5;
+.modal-subtext {
+  color: #64748b;
+  font-size: 13.5px;
+  margin-bottom: 20px;
 }
 
-.success-modal h3 {
-    margin: 20px 0 30px;
-    color: #16a34a;
-    font-size: 30px;
+.session-card {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 24px;
 }
 
-.success-modal button {
-    width: 100%;
+.session-label {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #166534;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
 }
 
+.session-time {
+  display: block;
+  font-size: 26px;
+  font-weight: 800;
+  color: #15803d;
+}
 
+.modal-close-btn {
+  width: 100%;
+  padding: 12px;
+  background: #15803d;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
 
+.modal-close-btn:hover {
+  background: #166534;
+}
+
+/* Animations */
 @keyframes popup {
-    from {
-        transform: scale(.85);
-        opacity: 0;
-    }
-
-    to {
-        transform: scale(1);
-        opacity: 1;
-    }
+  from {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 @keyframes fadeIn {
-    from {
-        opacity: 0;
-    }
-
-    to {
-        opacity: 1;
-    }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
+/* Responsive Breakdown */
+@media (max-width: 820px) {
+  .registration-container {
+    padding: 28px 20px;
+  }
 
-@media (max-width: 768px) {
+  .registration-content {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
 
-    .registration-container {
-        width: 95%;
-        padding: 30px;
-    }
+  .registration-header .title {
+    font-size: 22px;
+  }
 
-    .registration-container h1 {
-        font-size: 28px;
-    }
+  .clock-pill {
+    padding: 6px 14px;
+  }
 
-    .registration-container h3 {
-        font-size: 18px;
-    }
-
-    .clock {
-        font-size: 22px;
-    }
-
-    .success-modal {
-        width: 90%;
-    }
-
+  .clock-time {
+    font-size: 16px;
+  }
 }
