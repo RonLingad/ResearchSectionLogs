@@ -72,47 +72,53 @@ export default function Purpose() {
   };
 
   const calculateAnalytics = (data, monthFilter) => {
-    const counts = {
-      Aralinks: 0,
-      Research: 0,
-      "Epic Reading": 0,
-      Reading: 0,
-      "Trivia Search": 0,
-      Print: 0,
-      "Others ": 0,
-    };
-
-    let grandTotal = 0;
-
-    data.forEach((entry) => {
-      let rawPurposes = entry?.purposes;
-      if (!rawPurposes) return;
-
-      if (monthFilter !== "ALL" && entry.session_in) {
-        const entryMonth = new Date(entry.session_in).toLocaleString(
-          "default",
-          { month: "long" }
-        );
-        if (entryMonth !== monthFilter) return;
-      }
-
-      if (typeof rawPurposes === "string") {
-        rawPurposes = rawPurposes.split(",").map((p) => p.trim());
-      }
-
-      if (Array.isArray(rawPurposes)) {
-        rawPurposes.forEach((p) => {
-          if (counts[p] !== undefined) {
-            counts[p] += 1;
-            grandTotal += 1;
-          }
-        });
-      }
-    });
-
-    setAnalytics(counts);
-    setTotalSelections(grandTotal);
+  const counts = {
+    Aralinks: 0,
+    Research: 0,
+    "Epic Reading": 0,
+    Reading: 0,
+    "Trivia Search": 0,
+    Print: 0,
+    Others: 0, // Removed trailing space
   };
+
+  let grandTotal = 0;
+
+  data.forEach((entry) => {
+    let rawPurposes = entry?.purposes;
+    if (!rawPurposes) return;
+
+    if (monthFilter !== "ALL" && entry.session_in) {
+      const entryMonth = new Date(entry.session_in).toLocaleString(
+        "default",
+        { month: "long" }
+      );
+      if (entryMonth !== monthFilter) return;
+    }
+
+    if (typeof rawPurposes === "string") {
+      rawPurposes = rawPurposes.split(",").map((p) => p.trim());
+    }
+
+    if (Array.isArray(rawPurposes)) {
+      rawPurposes.forEach((p) => {
+        if (!p) return;
+        
+        // If 'p' matches a predefined category, increment it.
+        // Otherwise, group it under "Others".
+        if (counts[p] !== undefined) {
+          counts[p] += 1;
+        } else {
+          counts["Others"] += 1;
+        }
+        grandTotal += 1;
+      });
+    }
+  });
+
+  setAnalytics(counts);
+  setTotalSelections(grandTotal);
+};
 
   const getRankedPurposes = () => {
     const sorted = Object.entries(analytics).sort((a, b) => b[1] - a[1]);
