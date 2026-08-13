@@ -21,6 +21,7 @@ export default function Registration() {
     "Reading",
     "Trivia Search",
     "Print",
+    "Others",
   ];
 
   // Toggle checkbox state

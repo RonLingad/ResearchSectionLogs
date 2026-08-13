@@ -79,6 +79,7 @@ export default function Purpose() {
       Reading: 0,
       "Trivia Search": 0,
       Print: 0,
+      "Others ": 0,
     };
 
     let grandTotal = 0;
