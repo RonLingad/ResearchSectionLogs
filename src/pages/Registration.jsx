@@ -6,17 +6,33 @@ import { supabase } from "../lib/supabase";
 export default function Registration() {
   const [fullname, setFullname] = useState("");
   const [grade, setGrade] = useState("");
+  const [purposes, setPurposes] = useState([]);
   const [currentTime, setCurrentTime] = useState("");
   const [currentDate, setCurrentDate] = useState("");
 
   const [loading, setLoading] = useState(false);
-
   const [showModal, setShowModal] = useState(false);
   const [endTime, setEndTime] = useState("");
 
-  // ==========================
+  const availablePurposes = [
+    "Aralinks",
+    "Research",
+    "Epic Reading",
+    "Reading",
+    "Trivia Search",
+    "Print",
+  ];
+
+  // Toggle checkbox state
+  const handlePurposeChange = (purpose) => {
+    setPurposes((prev) =>
+      prev.includes(purpose)
+        ? prev.filter((p) => p !== purpose)
+        : [...prev, purpose]
+    );
+  };
+
   // Live Clock & Date
-  // ==========================
   useEffect(() => {
     const updateClock = () => {
       const now = new Date();
@@ -42,13 +58,10 @@ export default function Registration() {
 
     updateClock();
     const interval = setInterval(updateClock, 1000);
-
     return () => clearInterval(interval);
   }, []);
 
-  // ==========================
   // Register Student
-  // ==========================
   const handleRegister = async (e) => {
     e.preventDefault();
 
@@ -57,16 +70,21 @@ export default function Registration() {
       return;
     }
 
+    if (purposes.length === 0) {
+      alert("Please select at least one purpose for your visit.");
+      return;
+    }
+
     setLoading(true);
 
     const sessionIn = new Date();
-    // Session duration: +15 Minutes
     const sessionOut = new Date(sessionIn.getTime() + 15 * 60 * 1000);
 
     const { error } = await supabase.from("logs").insert([
       {
         fullname: fullname.trim(),
         grade: grade,
+        purposes: purposes, // Array of strings (or user purposes.join(', ') if storing as text)
         session_in: sessionIn.toISOString(),
         session_out: sessionOut.toISOString(),
       },
@@ -89,17 +107,15 @@ export default function Registration() {
     );
 
     setShowModal(true);
-
     setFullname("");
     setGrade("");
+    setPurposes([]);
   };
 
   return (
     <div
       className="registration-page"
-      style={{
-        backgroundImage: `url(${background})`,
-      }}
+      style={{ backgroundImage: `url(${background})` }}
     >
       <div className="overlay"></div>
 
@@ -118,12 +134,10 @@ export default function Registration() {
           </div>
 
           <h1 className="title">Internet & Research Section</h1>
-          <p className="subtitle">
-            Student Computer Access Registration
-          </p>
+          <p className="subtitle">Student Computer Access Registration</p>
         </div>
 
-        {/* Content Layout: Form & Reminders */}
+        {/* Content Layout */}
         <div className="registration-content">
           {/* Form Side */}
           <div className="form-card">
@@ -194,6 +208,23 @@ export default function Registration() {
                       Non-Teaching Personnel
                     </option>
                   </select>
+                </div>
+              </div>
+
+              {/* Purpose Checkboxes */}
+              <div className="input-group">
+                <label>Purpose of Visit</label>
+                <div className="checkbox-grid">
+                  {availablePurposes.map((item) => (
+                    <label key={item} className="checkbox-label">
+                      <input
+                        type="checkbox"
+                        checked={purposes.includes(item)}
+                        onChange={() => handlePurposeChange(item)}
+                      />
+                      <span>{item}</span>
+                    </label>
+                  ))}
                 </div>
               </div>
 
