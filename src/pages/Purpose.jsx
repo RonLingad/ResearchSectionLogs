@@ -72,80 +72,109 @@ export default function Purpose() {
   };
 
   const calculateAnalytics = (data, monthFilter) => {
-  const counts = {
-    Aralinks: 0,
-    Research: 0,
-    "Epic Reading": 0,
-    Reading: 0,
-    "Trivia Search": 0,
-    Print: 0,
-    Others: 0, // Removed trailing space
-  };
+    const counts = {
+      Aralinks: 0,
+      Research: 0,
+      "Epic Reading": 0,
+      Reading: 0,
+      "Trivia Search": 0,
+      Print: 0,
+      Others: 0,
+    };
 
-  let grandTotal = 0;
+    let grandTotal = 0;
 
-  data.forEach((entry) => {
-    let rawPurposes = entry?.purposes;
-    if (!rawPurposes) return;
+    data.forEach((entry) => {
+      let rawPurposes = entry?.purposes;
+      if (!rawPurposes) return;
 
-    if (monthFilter !== "ALL" && entry.session_in) {
-      const entryMonth = new Date(entry.session_in).toLocaleString(
-        "default",
-        { month: "long" }
-      );
-      if (entryMonth !== monthFilter) return;
-    }
+      if (monthFilter !== "ALL" && entry.session_in) {
+        const entryMonth = new Date(entry.session_in).toLocaleString(
+          "default",
+          { month: "long" }
+        );
+        if (entryMonth !== monthFilter) return;
+      }
 
-    if (typeof rawPurposes === "string") {
-      rawPurposes = rawPurposes.split(",").map((p) => p.trim());
-    }
+      if (typeof rawPurposes === "string") {
+        rawPurposes = rawPurposes.split(",").map((p) => p.trim());
+      }
 
-    if (Array.isArray(rawPurposes)) {
-      rawPurposes.forEach((p) => {
-        if (!p) return;
-        
-        // If 'p' matches a predefined category, increment it.
-        // Otherwise, group it under "Others".
-        if (counts[p] !== undefined) {
-          counts[p] += 1;
-        } else {
-          counts["Others"] += 1;
-        }
-        grandTotal += 1;
-      });
-    }
-  });
+      if (Array.isArray(rawPurposes)) {
+        rawPurposes.forEach((p) => {
+          if (!p) return;
 
-  setAnalytics(counts);
-  setTotalSelections(grandTotal);
-};
-
-  const getRankedPurposes = () => {
-    const sorted = Object.entries(analytics).sort((a, b) => b[1] - a[1]);
-    if (sorted.length === 0 || totalSelections === 0) {
-      return {
-        top: { name: "N/A", pct: "0.0", count: 0 },
-        second: { name: "N/A", pct: "0.0", count: 0 },
-        least: { name: "N/A", pct: "0.0", count: 0 },
-      };
-    }
-
-    const formatEntry = ([name, count]) => ({
-      name,
-      count,
-      pct: ((count / totalSelections) * 100).toFixed(1),
+          if (counts[p] !== undefined) {
+            counts[p] += 1;
+          } else {
+            counts["Others"] += 1;
+          }
+          grandTotal += 1;
+        });
+      }
     });
 
-    return {
-      top: formatEntry(sorted[0]),
-      second: sorted.length > 1 ? formatEntry(sorted[1]) : formatEntry(sorted[0]),
-      least: formatEntry(sorted[sorted.length - 1]),
-    };
+    setAnalytics(counts);
+    setTotalSelections(grandTotal);
   };
 
-  const ranked = getRankedPurposes();
-  const currentMonthLabel =
-    selectedMonth === "ALL" ? "Overall Record" : selectedMonth;
+  // Get sorted list of defined categories (excluding "Others")
+  const getSortedDefinedCategories = () => {
+    return Object.entries(analytics)
+      .filter(([name]) => name !== "Others")
+      .sort((a, b) => b[1] - a[1])
+      .map(([name, count]) => ({
+        name,
+        count,
+        pct: totalSelections > 0 ? ((count / totalSelections) * 100).toFixed(1) : "0.0",
+      }));
+  };
+
+  const sortedCategories = getSortedDefinedCategories();
+  const currentMonthLabel = selectedMonth === "ALL" ? "Overall Record" : selectedMonth;
+
+  // Others details
+  const othersCount = analytics["Others"] || 0;
+  const othersPct =
+    totalSelections > 0
+      ? ((othersCount / totalSelections) * 100).toFixed(1)
+      : "0.0";
+
+  // Generate formal, insightful, multi-paragraph analysis
+  const generateInsightfulConclusionParagraphs = () => {
+    if (totalSelections === 0 || sortedCategories.length === 0) {
+      return [
+        `During the reporting period of ${currentMonthLabel}, no user activity records were registered within the Internet and Research Section. Consequently, institutional compliance and operational utilization metrics cannot be determined for this timeframe.`
+      ];
+    }
+
+    const primaryActivity = sortedCategories[0];
+    const secondaryActivities = sortedCategories.slice(1, -1);
+    const leastActivity = sortedCategories[sortedCategories.length - 1];
+
+    const rankedListText = sortedCategories
+      .map((cat) => `${cat.name} (${cat.pct}%, ${cat.count} logs)`)
+      .join(", ");
+
+    // Paragraph 1: Executive Overview & User Intent Profile
+    const p1 = `An analysis of the registered session metrics for ${currentMonthLabel} indicates that users accessing the Internet and Research Section demonstrate a strong, task-oriented focus aligned primarily with academic engagement and structured learning activities. Overall activity across all established parameters ranked from highest to lowest demand as follows: ${rankedListText}. Notably, ${primaryActivity.name} emerged as the primary driver of workstation utilization, commanding ${primaryActivity.pct}% of total recorded traffic (${primaryActivity.count} visits). This concentration underscores that patrons utilize facility workstations chiefly to fulfill core educational requirements, access designated learning management tools, and execute structured scholastic research.`;
+
+    // Paragraph 2: Secondary Engagement & Underutilized Services
+    let p2 = `Secondary operational demands were distributed among auxiliary digital services, led by ${
+      secondaryActivities.map((cat) => `${cat.name} (${cat.pct}%)`).join(", ")
+    }.`;
+    p2 += ` Conversely, ${leastActivity.name} was recorded as the least requested service, accounting for only ${leastActivity.pct}% of overall selections (${leastActivity.count} logs). This disparity highlights a clear prioritization of digital coursework and information gathering over secondary tasks, signaling an opportunity for facility administrators to evaluate whether underutilized services require targeted promotion or resource reallocation.`;
+
+    // Paragraph 3: Analysis of Uncategorized Activities ("Others") & Institutional Recommendations
+    let p3 = "";
+    if (othersCount > 0) {
+      p3 = `In addition to defined options, uncategorized usage captured under "Others" represented ${othersPct}% of total user selections (${othersCount} logs). The presence of these unaccounted visits suggests that patrons are engaging in specialized, emerging, or non-standard digital activities beyond the pre-configured options. It is recommended that administrative personnel conduct periodic audits of these entries to identify recurring user requirements, refine standard activity categories, and ensure digital infrastructure continues to meet evolving institutional needs.`;
+    } else {
+      p3 = `Remarkably, zero unclassified entries ("Others") were logged during this period, demonstrating complete alignment between patron activities and pre-established operational categories. Continued monitoring is recommended to sustain optimal resource allocation, software provisioning, and network bandwidth distribution across all research terminals.`;
+    }
+
+    return [p1, p2, p3];
+  };
 
   const filteredLogs = logs.filter((log) => {
     if (selectedMonth === "ALL") return true;
@@ -169,7 +198,6 @@ export default function Purpose() {
     if (currentPage > 1) setCurrentPage((prev) => prev - 1);
   };
 
-  // Chart Configuration with Font Size 12 and High Contrast
   const chartData = {
     labels: Object.keys(analytics),
     datasets: [
@@ -186,7 +214,7 @@ export default function Purpose() {
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
-    devicePixelRatio: 2, // Enhances sharpness
+    devicePixelRatio: 2,
     plugins: {
       legend: {
         position: "top",
@@ -273,19 +301,25 @@ export default function Purpose() {
 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
-    doc.text("ANALYTICAL CONCLUSION & SUMMARY", 14, 122);
+    doc.text("ANALYTICAL EVALUATION & EXECUTIVE SUMMARY", 14, 122);
 
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(9.5);
+    doc.setFontSize(8.5);
 
-    const conclusionText = `During the reporting period of ${currentMonthLabel}, user activity within the Internet and Research Section was primarily led by ${ranked.top.name}, which accounted for ${ranked.top.pct}% of all logged selections (${ranked.top.count} out of ${totalSelections} total visits). This was closely followed by ${ranked.second.name} as the second most utilized activity, representing ${ranked.second.pct}% (${ranked.second.count} visits). Conversely, ${ranked.least.name} was recorded as the least utilized purpose, comprising ${ranked.least.pct}% (${ranked.least.count} visits). This complete distribution provides critical insights for optimizing workstation availability and adjusting digital resource allocations.`;
+    const paragraphs = generateInsightfulConclusionParagraphs();
+    let currentY = 127;
 
-    const splitConclusion = doc.splitTextToSize(conclusionText, 182);
-    
-    let startY = 128;
-    splitConclusion.forEach((line) => {
-      doc.text(line, 14, startY);
-      startY += 6.5;
+    paragraphs.forEach((pText) => {
+      const splitLines = doc.splitTextToSize(pText, 182);
+      splitLines.forEach((line) => {
+        if (currentY > 280) {
+          doc.addPage();
+          currentY = 18;
+        }
+        doc.text(line, 14, currentY);
+        currentY += 4.5;
+      });
+      currentY += 3; // Space between paragraphs
     });
 
     const breakdownBody = Object.entries(analytics).map(([key, count]) => {
@@ -297,7 +331,7 @@ export default function Purpose() {
     });
 
     autoTable(doc, {
-      startY: startY + 4,
+      startY: currentY + 2,
       head: [["Category / Purpose", "Total Visits", "Percentage Share"]],
       body: breakdownBody,
       theme: "plain",
@@ -386,6 +420,8 @@ export default function Purpose() {
       </div>
     );
   }
+
+  const conclusionParagraphs = generateInsightfulConclusionParagraphs();
 
   return (
     <div
@@ -511,7 +547,7 @@ export default function Purpose() {
           <Bar data={chartData} options={chartOptions} />
         </div>
 
-        {/* Analytical Conclusion Box with 1.5 Spacing */}
+        {/* Analytical Conclusion Box - Formal, Multi-Paragraph Insights */}
         <div
           style={{
             backgroundColor: "#f9fafb",
@@ -519,43 +555,37 @@ export default function Purpose() {
             borderRight: "1px solid #e5e7eb",
             borderTop: "1px solid #e5e7eb",
             borderBottom: "1px solid #e5e7eb",
-            padding: "18px",
+            padding: "20px",
             borderRadius: "2px",
             marginBottom: "30px",
           }}
         >
           <h4
             style={{
-              margin: "0 0 10px 0",
+              margin: "0 0 14px 0",
               color: "#000000",
               fontWeight: "bold",
-              fontSize: "1rem",
+              fontSize: "1.05rem",
+              textTransform: "uppercase",
+              letterSpacing: "0.5px",
             }}
           >
-            Analytical Summary & Conclusion
+            Analytical Evaluation & Executive Summary
           </h4>
-          <p
-            style={{
-              margin: 0,
-              color: "#000000",
-              lineHeight: "1.5",
-              fontSize: "0.95rem",
-            }}
-          >
-            During the reporting period of <strong>{currentMonthLabel}</strong>,
-            user activity within the Internet and Research Section was primarily
-            led by <strong>{ranked.top.name}</strong>, which accounted for{" "}
-            <strong>{ranked.top.pct}%</strong> of all recorded selections (
-            {ranked.top.count} out of {totalSelections} total visits). This was
-            followed by <strong>{ranked.second.name}</strong> as the
-            second highest utilized activity at{" "}
-            <strong>{ranked.second.pct}%</strong> ({ranked.second.count}{" "}
-            visits). Conversely, <strong>{ranked.least.name}</strong> was
-            recorded as the least utilized purpose, comprising{" "}
-            <strong>{ranked.least.pct}%</strong> ({ranked.least.count} visits).
-            This comprehensive breakdown provides crucial usage metrics for
-            workstation planning and digital resource allocation.
-          </p>
+          {conclusionParagraphs.map((para, idx) => (
+            <p
+              key={idx}
+              style={{
+                margin: "0 0 12px 0",
+                color: "#111827",
+                lineHeight: "1.6",
+                fontSize: "0.93rem",
+                textAlign: "justify",
+              }}
+            >
+              {para}
+            </p>
+          ))}
         </div>
 
         {/* Percentage Breakdown Cards */}
