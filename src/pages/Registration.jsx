@@ -14,6 +14,10 @@ export default function Registration() {
   const [showModal, setShowModal] = useState(false);
   const [endTime, setEndTime] = useState("");
 
+  // State for Alert Modal
+  const [showAlertModal, setShowAlertModal] = useState(false);
+  const [alertMessage, setAlertMessage] = useState("");
+
   const availablePurposes = [
     "Aralinks",
     "Research",
@@ -67,12 +71,14 @@ export default function Registration() {
     e.preventDefault();
 
     if (!fullname.trim() || !grade) {
-      alert("Please enter your name and select a grade level.");
+      setAlertMessage("Please enter your name and select a grade level.");
+      setShowAlertModal(true);
       return;
     }
 
     if (purposes.length === 0) {
-      alert("Please select at least one purpose for your visit.");
+      setAlertMessage("Please select at least one purpose for your visit.");
+      setShowAlertModal(true);
       return;
     }
 
@@ -85,7 +91,7 @@ export default function Registration() {
       {
         fullname: fullname.trim(),
         grade: grade,
-        purposes: purposes, // Array of strings (or user purposes.join(', ') if storing as text)
+        purposes: purposes,
         session_in: sessionIn.toISOString(),
         session_out: sessionOut.toISOString(),
       },
@@ -95,7 +101,8 @@ export default function Registration() {
 
     if (error) {
       console.error(error);
-      alert(error.message);
+      setAlertMessage(error.message);
+      setShowAlertModal(true);
       return;
     }
 
@@ -170,7 +177,6 @@ export default function Registration() {
                     placeholder="Juan De La Cruz"
                     value={fullname}
                     onChange={(e) => setFullname(e.target.value)}
-                    required
                   />
                 </div>
               </div>
@@ -195,7 +201,6 @@ export default function Registration() {
                     id="grade"
                     value={grade}
                     onChange={(e) => setGrade(e.target.value)}
-                    required
                   >
                     <option value="">Select Option...</option>
                     <option value="Grade 1">Grade 1</option>
@@ -286,7 +291,7 @@ export default function Registration() {
               </li>
               <li>
                 <span className="rule-num">2</span>
-                <span>Let the officer-in-charge assign your workstation.</span>
+                <span>Let the staff-in-charge assign your workstation.</span>
               </li>
               <li>
                 <span className="rule-num">3</span>
@@ -308,6 +313,109 @@ export default function Registration() {
           </div>
         </div>
       </div>
+
+      {/* Validation Alert Modal (Inline Styles) */}
+      {showAlertModal && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.65)",
+            backdropFilter: "blur(4px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+            animation: "fadeIn 0.2s ease-out",
+          }}
+          onClick={() => setShowAlertModal(false)}
+        >
+          <div
+            style={{
+              backgroundColor: "#ffffff",
+              borderRadius: "16px",
+              padding: "28px 24px",
+              maxWidth: "380px",
+              width: "90%",
+              textAlign: "center",
+              boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.2)",
+              border: "1px solid #fee2e2",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Warning Icon Badge */}
+            <div
+              style={{
+                width: "56px",
+                height: "56px",
+                backgroundColor: "#fef2f2",
+                color: "#ef4444",
+                borderRadius: "50%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                margin: "0 auto 16px auto",
+              }}
+            >
+              <svg
+                style={{ width: "32px", height: "32px" }}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                />
+              </svg>
+            </div>
+
+            <h3
+              style={{
+                margin: "0 0 8px 0",
+                fontSize: "1.25rem",
+                fontWeight: "700",
+                color: "#111827",
+              }}
+            >
+              Missing Information
+            </h3>
+            <p
+              style={{
+                margin: "0 0 24px 0",
+                fontSize: "0.95rem",
+                color: "#4b5563",
+                lineHeight: "1.5",
+              }}
+            >
+              {alertMessage}
+            </p>
+
+            <button
+              type="button"
+              onClick={() => setShowAlertModal(false)}
+              style={{
+                width: "100%",
+                padding: "12px 16px",
+                backgroundColor: "#dc2626",
+                color: "#ffffff",
+                border: "none",
+                borderRadius: "10px",
+                fontSize: "0.95rem",
+                fontWeight: "600",
+                cursor: "pointer",
+                transition: "background-color 0.2s",
+              }}
+              onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#b91c1c")}
+              onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "#dc2626")}
+            >
+              Got it, thanks
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Confirmation Success Modal */}
       {showModal && (
