@@ -744,7 +744,7 @@ export default function Purpose() {
                     style={{ borderBottom: "1px solid #e5e7eb" }}
                   >
                     <td style={{ padding: "10px" }}>
-                      {log.fullname || "Anonymous"}
+                       {log.fullname ? log.fullname.toUpperCase() : "ANONYMOUS"}
                     </td>
                     <td style={{ padding: "10px" }}>
                       {formattedPurposes || "None"}
