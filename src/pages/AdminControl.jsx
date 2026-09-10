@@ -722,13 +722,28 @@ export default function AdminControl() {
 
         </div>
 
+          {/* PEAK */}
 
-        {/* MENU */}
+          <div className="side-peak">
+
+            <span>
+              Peak Usage
+            </span>
+
+            <strong>
+              {analytics.peakText}
+            </strong>
+
+            <small>
+              {analytics.peakCount} records
+            </small>
+
+          </div>
 
         <div className="sidebar-menu">
 
           {/* RECORDS */}
-
+          
           <button
             type="button"
             className={menuClass(
@@ -885,23 +900,7 @@ export default function AdminControl() {
           </div>
 
 
-          {/* PEAK */}
 
-          <div className="side-peak">
-
-            <span>
-              Peak Usage
-            </span>
-
-            <strong>
-              {analytics.peakText}
-            </strong>
-
-            <small>
-              {analytics.peakCount} records
-            </small>
-
-          </div>
 
         </div>
 

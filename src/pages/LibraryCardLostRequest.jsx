@@ -1,22 +1,134 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
-
 import "./LibraryCardLostRequest.css";
 
-const PATRON_TYPES = [
-  "Student",
-  "Faculty",
-  "NTP",
-];
+const EMPTY_FORM = {
+  last_name: "",
+  first_name: "",
+  middle_name: "",
+  grade: "",
+  section: "",
+  patron_type: "Student",
+};
 
 const STATUS_OPTIONS = [
-  "Pending",
-  "Printed",
-  "Claimed",
+  {
+    value: "Pending",
+    label: "Pending",
+  },
+  {
+    value: "Printed",
+    label: "Printed",
+  },
+  {
+    value: "Claimed",
+    label: "Claimed",
+  },
 ];
 
+const normalizeName = (firstName, lastName) => {
+  const first = String(firstName || "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toUpperCase();
+
+  const last = String(lastName || "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toUpperCase();
+
+  return `${first}|${last}`;
+};
+
+const getFullName = (record) => {
+  const lastName = String(record.last_name || "").trim();
+  const firstName = String(record.first_name || "").trim();
+  const middleName = String(record.middle_name || "").trim();
+
+  if (!lastName && !firstName && !middleName) {
+    return "—";
+  }
+
+  let name = "";
+
+  if (lastName) {
+    name += lastName;
+  }
+
+  if (firstName) {
+    name += name ? `, ${firstName}` : firstName;
+  }
+
+  if (middleName) {
+    name += ` ${middleName}`;
+  }
+
+  return name;
+};
+
+const getLostCount = (records, firstName, lastName) => {
+  const targetName = normalizeName(
+    firstName,
+    lastName
+  );
+
+  return records.filter((record) => {
+    return (
+      normalizeName(
+        record.first_name,
+        record.last_name
+      ) === targetName
+    );
+  }).length;
+};
+
+const formatDate = (dateValue) => {
+  if (!dateValue) {
+    return "—";
+  }
+
+  const date = new Date(dateValue);
+
+  if (Number.isNaN(date.getTime())) {
+    return "—";
+  }
+
+  return date.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+};
+
+const formatDateTime = (dateValue) => {
+  if (!dateValue) {
+    return "—";
+  }
+
+  const date = new Date(dateValue);
+
+  if (Number.isNaN(date.getTime())) {
+    return "—";
+  }
+
+  return date.toLocaleString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+};
+
 export default function LibraryCardLostRequest() {
-  const [requests, setRequests] = useState([]);
+  const [form, setForm] = useState(EMPTY_FORM);
+
+  const [records, setRecords] = useState([]);
+
+  const [selectedStatus, setSelectedStatus] =
+    useState("Pending");
+
+  const [searchTerm, setSearchTerm] = useState("");
 
   const [loading, setLoading] = useState(true);
 
@@ -24,360 +136,453 @@ export default function LibraryCardLostRequest() {
 
   const [updatingId, setUpdatingId] = useState(null);
 
-  const [error, setError] = useState("");
+  const [errorMessage, setErrorMessage] =
+    useState("");
 
   const [successMessage, setSuccessMessage] =
     useState("");
 
-  /* =====================================================
-     FORM
-  ===================================================== */
+  const [showConfirmModal, setShowConfirmModal] =
+    useState(false);
 
-  const [formData, setFormData] = useState({
-    lastName: "",
-    firstName: "",
-    middleName: "",
-    grade: "",
-    section: "",
-    patronType: "Student",
-  });
+  const [pendingRequest, setPendingRequest] =
+    useState(null);
 
   /* =====================================================
-     FILTER
+     FETCH RECORDS
   ===================================================== */
 
-  const [statusFilter, setStatusFilter] =
-    useState("All");
+  const fetchRecords = async () => {
+    setLoading(true);
+    setErrorMessage("");
 
-  /* =====================================================
-     FETCH REQUESTS
-  ===================================================== */
+    const { data, error } = await supabase
+      .from("library_card_requests")
+      .select("*")
+      .order("created_at", {
+        ascending: false,
+      });
 
-  const fetchRequests = async () => {
-    try {
-      setLoading(true);
-      setError("");
-
-      const { data, error: fetchError } =
-        await supabase
-          .from("library_card_requests")
-          .select("*")
-          .order("created_at", {
-            ascending: false,
-          });
-
-      if (fetchError) {
-        throw fetchError;
-      }
-
-      setRequests(data || []);
-    } catch (err) {
+    if (error) {
       console.error(
         "Error fetching library card requests:",
-        err
+        error
       );
 
-      setError(
-        "Unable to load library card requests."
+      setErrorMessage(
+        "Unable to load library card requests. Please try again."
       );
-    } finally {
-      setLoading(false);
+
+      setRecords([]);
+    } else {
+      setRecords(data || []);
     }
+
+    setLoading(false);
   };
 
   useEffect(() => {
-    fetchRequests();
+    fetchRecords();
   }, []);
 
   /* =====================================================
-     FORM CHANGE
+     STATUS COUNTS
   ===================================================== */
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
+  const pendingCount = useMemo(() => {
+    return records.filter(
+      (record) => record.status === "Pending"
+    ).length;
+  }, [records]);
 
-    setFormData((previous) => ({
+  const printedCount = useMemo(() => {
+    return records.filter(
+      (record) => record.status === "Printed"
+    ).length;
+  }, [records]);
+
+  const claimedCount = useMemo(() => {
+    return records.filter(
+      (record) => record.status === "Claimed"
+    ).length;
+  }, [records]);
+
+  /* =====================================================
+     COMPLETED RECORDS
+  ===================================================== */
+
+  const completedRecords = useMemo(() => {
+    return records.filter(
+      (record) => record.status === "Claimed"
+    );
+  }, [records]);
+
+  /* =====================================================
+     SELECTED STATUS RECORDS + SEARCH
+  ===================================================== */
+
+  const displayedRecords = useMemo(() => {
+    const search = searchTerm
+      .trim()
+      .toUpperCase();
+
+    return records.filter((record) => {
+      /*
+        Only show the selected status.
+      */
+      if (record.status !== selectedStatus) {
+        return false;
+      }
+
+      /*
+        If there is no search term,
+        return all records under the selected status.
+      */
+      if (!search) {
+        return true;
+      }
+
+      const firstName = String(
+        record.first_name || ""
+      ).toUpperCase();
+
+      const middleName = String(
+        record.middle_name || ""
+      ).toUpperCase();
+
+      const lastName = String(
+        record.last_name || ""
+      ).toUpperCase();
+
+      const fullName =
+        `${lastName} ${firstName} ${middleName}`;
+
+      return (
+        firstName.includes(search) ||
+        middleName.includes(search) ||
+        lastName.includes(search) ||
+        fullName.includes(search)
+      );
+    });
+  }, [
+    records,
+    selectedStatus,
+    searchTerm,
+  ]);
+
+  /* =====================================================
+     FORM HANDLING
+  ===================================================== */
+
+  const handleChange = (event) => {
+    const {
+      name,
+      value,
+    } = event.target;
+
+    setForm((previous) => ({
       ...previous,
       [name]: value,
     }));
+  };
+
+  const resetForm = () => {
+    setForm(EMPTY_FORM);
+  };
+
+  /* =====================================================
+     INSERT REQUEST
+  ===================================================== */
+
+  const insertRequest = async (requestData) => {
+    setSubmitting(true);
+    setErrorMessage("");
+    setSuccessMessage("");
+
+    const cleanedForm = {
+      last_name: requestData.last_name
+        .trim()
+        .replace(/\s+/g, " ")
+        .toUpperCase(),
+
+      first_name: requestData.first_name
+        .trim()
+        .replace(/\s+/g, " ")
+        .toUpperCase(),
+
+      middle_name: requestData.middle_name
+        .trim()
+        .replace(/\s+/g, " ")
+        .toUpperCase(),
+
+      grade: requestData.grade.trim(),
+
+      section: requestData.section
+        .trim()
+        .replace(/\s+/g, " ")
+        .toUpperCase(),
+
+      patron_type: requestData.patron_type,
+
+      status: "Pending",
+    };
+
+    const {
+      data,
+      error,
+    } = await supabase
+      .from("library_card_requests")
+      .insert([cleanedForm])
+      .select()
+      .single();
+
+    if (error) {
+      console.error(
+        "Error adding library card request:",
+        error
+      );
+
+      setErrorMessage(
+        `Unable to add the request: ${
+          error.message ||
+          "Unknown error"
+        }`
+      );
+
+      setSubmitting(false);
+
+      return false;
+    }
+
+    setRecords((previous) => [
+      data,
+      ...previous,
+    ]);
+
+    setSuccessMessage(
+      "Library card lost request has been submitted successfully."
+    );
+
+    resetForm();
+
+    /*
+      Newly submitted request is Pending,
+      so automatically switch to Pending.
+    */
+    setSelectedStatus("Pending");
+
+    setSearchTerm("");
+
+    setSubmitting(false);
+
+    return true;
   };
 
   /* =====================================================
      SUBMIT FORM
   ===================================================== */
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (event) => {
+    event.preventDefault();
 
-    setError("");
+    setErrorMessage("");
     setSuccessMessage("");
 
-    /* -----------------------------------------------
-       VALIDATION
-    ------------------------------------------------ */
+    const firstName =
+      form.first_name.trim();
 
-    if (
-      !formData.lastName.trim() ||
-      !formData.firstName.trim() ||
-      !formData.grade.trim() ||
-      !formData.section.trim()
-    ) {
-      setError(
-        "Please complete all required fields."
+    const lastName =
+      form.last_name.trim();
+
+    if (!firstName || !lastName) {
+      setErrorMessage(
+        "Please enter the patron's first name and last name."
       );
 
       return;
     }
 
-    try {
-      setSubmitting(true);
+    if (!form.grade.trim()) {
+      setErrorMessage(
+        "Please enter the grade."
+      );
 
-      const { data, error: insertError } =
-        await supabase
-          .from("library_card_requests")
-          .insert([
-            {
-              last_name:
-                formData.lastName.trim(),
+      return;
+    }
 
-              first_name:
-                formData.firstName.trim(),
+    if (!form.section.trim()) {
+      setErrorMessage(
+        "Please enter the section."
+      );
 
-              middle_name:
-                formData.middleName.trim() ||
-                null,
+      return;
+    }
 
-              grade:
-                formData.grade.trim(),
+    const lostCount = getLostCount(
+      records,
+      firstName,
+      lastName
+    );
 
-              section:
-                formData.section.trim(),
-
-              patron_type:
-                formData.patronType,
-
-              status: "Pending",
-            },
-          ])
-          .select()
-          .single();
-
-      if (insertError) {
-        throw insertError;
-      }
-
-      /* -----------------------------------------------
-         ADD NEW REQUEST TO LIST
-      ------------------------------------------------ */
-
-      setRequests((previous) => [
-        data,
-        ...previous,
-      ]);
-
-      /* -----------------------------------------------
-         CLEAR FORM
-      ------------------------------------------------ */
-
-      setFormData({
-        lastName: "",
-        firstName: "",
-        middleName: "",
-        grade: "",
-        section: "",
-        patronType: "Student",
+    /*
+      If the patron has already lost
+      3 or more cards, show confirmation.
+    */
+    if (lostCount >= 3) {
+      setPendingRequest({
+        ...form,
+        lostCount,
       });
 
-      setSuccessMessage(
-        "Library card request added successfully."
-      );
+      setShowConfirmModal(true);
 
-      setTimeout(() => {
-        setSuccessMessage("");
-      }, 3000);
-    } catch (err) {
-      console.error(
-        "Error adding library card request:",
-        err
-      );
-
-      setError(
-        "Unable to add the request. Please try again."
-      );
-    } finally {
-      setSubmitting(false);
+      return;
     }
+
+    await insertRequest(form);
+  };
+
+  /* =====================================================
+     CANCEL COORDINATOR CONFIRMATION
+  ===================================================== */
+
+  const handleCancelConfirmation = () => {
+    setShowConfirmModal(false);
+    setPendingRequest(null);
+  };
+
+  /* =====================================================
+     APPROVE COORDINATOR CONFIRMATION
+  ===================================================== */
+
+  const handleApprovedConfirmation = async () => {
+    if (!pendingRequest) {
+      return;
+    }
+
+    const requestToSubmit = {
+      ...pendingRequest,
+    };
+
+    setShowConfirmModal(false);
+    setPendingRequest(null);
+
+    await insertRequest(requestToSubmit);
   };
 
   /* =====================================================
      UPDATE STATUS
   ===================================================== */
 
-  const updateStatus = async (
-    requestId,
+  const handleStatusChange = async (
+    record,
     newStatus
   ) => {
-    try {
-      setUpdatingId(requestId);
+    if (!record?.id) {
+      return;
+    }
 
-      setError("");
+    setUpdatingId(record.id);
 
-      const { error: updateError } =
-        await supabase
-          .from("library_card_requests")
-          .update({
-            status: newStatus,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", requestId);
+    setErrorMessage("");
+    setSuccessMessage("");
 
-      if (updateError) {
-        throw updateError;
-      }
+    const updateData = {
+      status: newStatus,
+    };
 
-      /* -----------------------------------------------
-         UPDATE LOCAL LIST
-      ------------------------------------------------ */
+    /*
+      When marked Claimed,
+      automatically save date and time.
+    */
+    if (newStatus === "Claimed") {
+      updateData.claimed_at =
+        new Date().toISOString();
+    }
 
-      setRequests((previous) =>
-        previous.map((request) =>
-          request.id === requestId
-            ? {
-                ...request,
-                status: newStatus,
-              }
-            : request
-        )
-      );
-    } catch (err) {
+    /*
+      If changed away from Claimed,
+      clear claimed date.
+    */
+    if (
+      newStatus !== "Claimed" &&
+      record.status === "Claimed"
+    ) {
+      updateData.claimed_at = null;
+    }
+
+    const {
+      data,
+      error,
+    } = await supabase
+      .from("library_card_requests")
+      .update(updateData)
+      .eq("id", record.id)
+      .select()
+      .single();
+
+    if (error) {
       console.error(
-        "Error updating status:",
-        err
+        "Error updating request:",
+        error
       );
 
-      setError(
-        "Unable to update the request status."
+      setErrorMessage(
+        `Unable to update the request: ${
+          error.message ||
+          "Unknown error"
+        }`
       );
-    } finally {
+
       setUpdatingId(null);
-    }
-  };
 
-  /* =====================================================
-     FILTERED REQUESTS
-  ===================================================== */
-
-  const filteredRequests = useMemo(() => {
-    if (statusFilter === "All") {
-      return requests;
+      return;
     }
 
-    return requests.filter(
-      (request) =>
-        request.status === statusFilter
+    setRecords((previous) =>
+      previous.map((item) =>
+        item.id === record.id
+          ? {
+              ...item,
+              ...data,
+            }
+          : item
+      )
     );
-  }, [requests, statusFilter]);
 
-  /* =====================================================
-     COUNTS
-  ===================================================== */
+    if (newStatus === "Claimed") {
+      setSuccessMessage(
+        `${getFullName(
+          record
+        )} has been marked as claimed.`
+      );
+    } else {
+      setSuccessMessage(
+        `${getFullName(
+          record
+        )} status updated to ${newStatus}.`
+      );
+    }
 
-  const pendingCount = requests.filter(
-    (request) =>
-      request.status === "Pending"
-  ).length;
-
-  const printedCount = requests.filter(
-    (request) =>
-      request.status === "Printed"
-  ).length;
-
-  const claimedCount = requests.filter(
-    (request) =>
-      request.status === "Claimed"
-  ).length;
-
-  /* =====================================================
-     NAME FORMAT
-  ===================================================== */
-
-  const formatName = (request) => {
-    const middleName =
-      request.middle_name
-        ? ` ${request.middle_name}`
-        : "";
-
-    return `${request.last_name}, ${request.first_name}${middleName}`;
+    setUpdatingId(null);
   };
 
   /* =====================================================
-     DATE FORMAT
+     STATUS TAB
   ===================================================== */
 
-  const formatDate = (dateValue) => {
-    if (!dateValue) {
-      return "—";
-    }
+  const handleStatusTab = (status) => {
+    setSelectedStatus(status);
 
-    const date = new Date(dateValue);
-
-    if (Number.isNaN(date.getTime())) {
-      return "—";
-    }
-
-    return date.toLocaleString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-    });
+    /*
+      Clear search when switching status
+      so the user can see all records.
+    */
+    setSearchTerm("");
   };
 
   /* =====================================================
-     STATUS CLASS
-  ===================================================== */
-
-  const getStatusClass = (status) => {
-    switch (status) {
-      case "Pending":
-        return "library-status-pending";
-
-      case "Printed":
-        return "library-status-printed";
-
-      case "Claimed":
-        return "library-status-claimed";
-
-      default:
-        return "";
-    }
-  };
-
-  /* =====================================================
-     LOADING
-  ===================================================== */
-
-  if (loading) {
-    return (
-      <div className="library-card-page">
-
-        <div className="library-card-loading">
-
-          <div className="library-card-spinner"></div>
-
-          <p>
-            Loading library card requests...
-          </p>
-
-        </div>
-
-      </div>
-    );
-  }
-
-  /* =====================================================
-     PAGE
+     RENDER
   ===================================================== */
 
   return (
@@ -387,251 +592,75 @@ export default function LibraryCardLostRequest() {
           HEADER
       ================================================= */}
 
-      <div className="library-card-page-header">
+      <div className="library-card-header">
 
         <div>
-
           <h1>
             Library Card Lost Request
           </h1>
 
           <p>
-            Manage requests for replacement
-            library cards.
+            Manage lost library card requests
+            and completed card claims.
           </p>
-
         </div>
 
         <button
-          className="library-card-refresh"
-          onClick={fetchRequests}
+          type="button"
+          className="library-card-refresh-button"
+          onClick={fetchRecords}
+          disabled={loading}
         >
-          ↻ Refresh
+          {loading
+            ? "Refreshing..."
+            : "Refresh"}
         </button>
 
       </div>
 
-
       {/* =================================================
-          ERROR
+          ALERTS
       ================================================= */}
 
-      {error && (
-        <div className="library-card-message error">
-          {error}
+      {errorMessage && (
+        <div className="library-card-alert library-card-alert-error">
+
+          <span>
+            {errorMessage}
+          </span>
+
+          <button
+            type="button"
+            onClick={() =>
+              setErrorMessage("")
+            }
+            aria-label="Close error"
+          >
+            ×
+          </button>
+
         </div>
       )}
-
-
-      {/* =================================================
-          SUCCESS
-      ================================================= */}
 
       {successMessage && (
-        <div className="library-card-message success">
-          {successMessage}
+        <div className="library-card-alert library-card-alert-success">
+
+          <span>
+            {successMessage}
+          </span>
+
+          <button
+            type="button"
+            onClick={() =>
+              setSuccessMessage("")
+            }
+            aria-label="Close success"
+          >
+            ×
+          </button>
+
         </div>
       )}
-
-
-      {/* =================================================
-          REQUEST FORM
-      ================================================= */}
-
-      <div className="library-card-panel">
-
-        <div className="library-card-panel-header">
-
-          <div>
-
-            <h2>
-              New Lost Card Request
-            </h2>
-
-            <p>
-              Enter the patron information
-              to create a request.
-            </p>
-
-          </div>
-
-        </div>
-
-
-        <form
-          className="library-card-form"
-          onSubmit={handleSubmit}
-        >
-
-          {/* -------------------------------------------
-              LAST NAME
-          -------------------------------------------- */}
-
-          <div className="library-card-form-group">
-
-            <label>
-              Last Name
-              <span>*</span>
-            </label>
-
-            <input
-              type="text"
-              name="lastName"
-              value={formData.lastName}
-              onChange={handleInputChange}
-              placeholder="Enter last name"
-              required
-            />
-
-          </div>
-
-
-          {/* -------------------------------------------
-              FIRST NAME
-          -------------------------------------------- */}
-
-          <div className="library-card-form-group">
-
-            <label>
-              First Name
-              <span>*</span>
-            </label>
-
-            <input
-              type="text"
-              name="firstName"
-              value={formData.firstName}
-              onChange={handleInputChange}
-              placeholder="Enter first name"
-              required
-            />
-
-          </div>
-
-
-          {/* -------------------------------------------
-              MIDDLE NAME
-          -------------------------------------------- */}
-
-          <div className="library-card-form-group">
-
-            <label>
-              Middle Name
-            </label>
-
-            <input
-              type="text"
-              name="middleName"
-              value={formData.middleName}
-              onChange={handleInputChange}
-              placeholder="Enter middle name"
-            />
-
-          </div>
-
-
-          {/* -------------------------------------------
-              GRADE
-          -------------------------------------------- */}
-
-          <div className="library-card-form-group">
-
-            <label>
-              Grade
-              <span>*</span>
-            </label>
-
-            <input
-              type="text"
-              name="grade"
-              value={formData.grade}
-              onChange={handleInputChange}
-              placeholder="e.g. Grade 6"
-              required
-            />
-
-          </div>
-
-
-          {/* -------------------------------------------
-              SECTION
-          -------------------------------------------- */}
-
-          <div className="library-card-form-group">
-
-            <label>
-              Section
-              <span>*</span>
-            </label>
-
-            <input
-              type="text"
-              name="section"
-              value={formData.section}
-              onChange={handleInputChange}
-              placeholder="e.g. St. Benedict"
-              required
-            />
-
-          </div>
-
-
-          {/* -------------------------------------------
-              PATRON TYPE
-          -------------------------------------------- */}
-
-          <div className="library-card-form-group">
-
-            <label>
-              Patron Type
-              <span>*</span>
-            </label>
-
-            <select
-              name="patronType"
-              value={formData.patronType}
-              onChange={handleInputChange}
-              required
-            >
-
-              {PATRON_TYPES.map(
-                (type) => (
-                  <option
-                    key={type}
-                    value={type}
-                  >
-                    {type}
-                  </option>
-                )
-              )}
-
-            </select>
-
-          </div>
-
-
-          {/* -------------------------------------------
-              SUBMIT
-          -------------------------------------------- */}
-
-          <div className="library-card-form-action">
-
-            <button
-              type="submit"
-              disabled={submitting}
-              className="library-card-submit"
-            >
-              {submitting
-                ? "Adding..."
-                : "+ Add Request"}
-            </button>
-
-          </div>
-
-        </form>
-
-      </div>
-
 
       {/* =================================================
           SUMMARY
@@ -639,188 +668,384 @@ export default function LibraryCardLostRequest() {
 
       <div className="library-card-summary">
 
-        <div
-          className={`library-card-summary-card ${
-            statusFilter === "All"
-              ? "active"
-              : ""
-          }`}
-          onClick={() =>
-            setStatusFilter("All")
-          }
-        >
+        <div className="library-card-summary-card">
 
-          <span>
-            All Requests
-          </span>
-
-          <strong>
-            {requests.length}
-          </strong>
-
-        </div>
-
-
-        <div
-          className={`library-card-summary-card pending ${
-            statusFilter === "Pending"
-              ? "active"
-              : ""
-          }`}
-          onClick={() =>
-            setStatusFilter("Pending")
-          }
-        >
-
-          <span>
+          <div className="library-card-summary-label">
             Pending
-          </span>
+          </div>
 
-          <strong>
+          <div className="library-card-summary-number">
             {pendingCount}
-          </strong>
+          </div>
 
         </div>
 
+        <div className="library-card-summary-card">
 
-        <div
-          className={`library-card-summary-card printed ${
-            statusFilter === "Printed"
-              ? "active"
-              : ""
-          }`}
-          onClick={() =>
-            setStatusFilter("Printed")
-          }
-        >
-
-          <span>
+          <div className="library-card-summary-label">
             Printed
-          </span>
+          </div>
 
-          <strong>
+          <div className="library-card-summary-number">
             {printedCount}
-          </strong>
+          </div>
 
         </div>
 
+        <div className="library-card-summary-card">
 
-        <div
-          className={`library-card-summary-card claimed ${
-            statusFilter === "Claimed"
-              ? "active"
-              : ""
-          }`}
-          onClick={() =>
-            setStatusFilter("Claimed")
-          }
-        >
-
-          <span>
+          <div className="library-card-summary-label">
             Claimed
-          </span>
+          </div>
 
-          <strong>
+          <div className="library-card-summary-number">
             {claimedCount}
-          </strong>
+          </div>
 
         </div>
 
       </div>
 
-
       {/* =================================================
-          REQUEST LIST
+          SUBMIT REQUEST
       ================================================= */}
 
-      <div className="library-card-panel">
+      <section className="library-card-panel">
 
-        <div className="library-card-list-header">
+        <div className="library-card-panel-header">
 
           <div>
-
             <h2>
-              Library Card Requests
+              Submit Lost Card Request
             </h2>
 
             <p>
-              View and manage submitted
-              replacement card requests.
+              Enter the patron information below.
             </p>
+          </div>
+
+        </div>
+
+        <form
+          className="library-card-form"
+          onSubmit={handleSubmit}
+        >
+
+          <div className="library-card-form-grid">
+
+            {/* LAST NAME */}
+
+            <div className="library-card-form-group">
+
+              <label htmlFor="last_name">
+                Last Name{" "}
+                <span>*</span>
+              </label>
+
+              <input
+                id="last_name"
+                name="last_name"
+                type="text"
+                value={form.last_name}
+                onChange={handleChange}
+                placeholder="Last name"
+                autoComplete="off"
+              />
+
+            </div>
+
+            {/* FIRST NAME */}
+
+            <div className="library-card-form-group">
+
+              <label htmlFor="first_name">
+                First Name{" "}
+                <span>*</span>
+              </label>
+
+              <input
+                id="first_name"
+                name="first_name"
+                type="text"
+                value={form.first_name}
+                onChange={handleChange}
+                placeholder="First name"
+                autoComplete="off"
+              />
+
+            </div>
+
+            {/* MIDDLE NAME */}
+
+            <div className="library-card-form-group">
+
+              <label htmlFor="middle_name">
+                Middle Name
+              </label>
+
+              <input
+                id="middle_name"
+                name="middle_name"
+                type="text"
+                value={form.middle_name}
+                onChange={handleChange}
+                placeholder="Middle name"
+                autoComplete="off"
+              />
+
+            </div>
+
+            {/* GRADE */}
+
+            <div className="library-card-form-group">
+
+              <label htmlFor="grade">
+                Grade{" "}
+                <span>*</span>
+              </label>
+
+              <input
+                id="grade"
+                name="grade"
+                type="text"
+                value={form.grade}
+                onChange={handleChange}
+                placeholder="e.g. Grade 7"
+                autoComplete="off"
+              />
+
+            </div>
+
+            {/* SECTION */}
+
+            <div className="library-card-form-group">
+
+              <label htmlFor="section">
+                Section{" "}
+                <span>*</span>
+              </label>
+
+              <input
+                id="section"
+                name="section"
+                type="text"
+                value={form.section}
+                onChange={handleChange}
+                placeholder="Section"
+                autoComplete="off"
+              />
+
+            </div>
+
+            {/* PATRON TYPE */}
+
+            <div className="library-card-form-group">
+
+              <label htmlFor="patron_type">
+                Patron Type{" "}
+                <span>*</span>
+              </label>
+
+              <select
+                id="patron_type"
+                name="patron_type"
+                value={form.patron_type}
+                onChange={handleChange}
+              >
+
+                <option value="Student">
+                  Student
+                </option>
+
+                <option value="Faculty">
+                  Faculty
+                </option>
+
+                <option value="NTP">
+                  NTP
+                </option>
+
+              </select>
+
+            </div>
 
           </div>
 
+          <div className="library-card-form-actions">
 
-          {/* -------------------------------------------
-              STATUS FILTER
-          -------------------------------------------- */}
+            <button
+              type="button"
+              className="library-card-clear-button"
+              onClick={resetForm}
+              disabled={submitting}
+            >
+              Clear
+            </button>
 
-          <div className="library-card-filter">
+            <button
+              type="submit"
+              className="library-card-submit-button"
+              disabled={submitting}
+            >
+              {submitting
+                ? "Submitting..."
+                : "Submit Request"}
+            </button>
 
-            <label>
-              Filter by Status
-            </label>
+          </div>
 
-            <select
-              value={statusFilter}
-              onChange={(e) =>
-                setStatusFilter(
-                  e.target.value
+        </form>
+
+      </section>
+
+      {/* =================================================
+          STATUS MANAGEMENT
+      ================================================= */}
+
+      <section className="library-card-panel">
+
+        <div className="library-card-panel-header">
+
+          <div>
+            <h2>
+              {selectedStatus} Requests
+            </h2>
+
+            <p>
+              View all{" "}
+              {selectedStatus.toLowerCase()}{" "}
+              library card requests.
+            </p>
+          </div>
+
+        </div>
+
+        {/* STATUS TABS */}
+
+        <div className="library-card-status-tabs">
+
+          {STATUS_OPTIONS.map((status) => {
+
+            let count = 0;
+
+            if (status.value === "Pending") {
+              count = pendingCount;
+            }
+
+            if (status.value === "Printed") {
+              count = printedCount;
+            }
+
+            if (status.value === "Claimed") {
+              count = claimedCount;
+            }
+
+            return (
+              <button
+                key={status.value}
+                type="button"
+                className={`library-card-status-tab ${
+                  selectedStatus ===
+                  status.value
+                    ? "active"
+                    : ""
+                }`}
+                onClick={() =>
+                  handleStatusTab(
+                    status.value
+                  )
+                }
+              >
+
+                <span>
+                  {status.label}
+                </span>
+
+                <span className="library-card-tab-count">
+                  {count}
+                </span>
+
+              </button>
+            );
+          })}
+
+        </div>
+
+        {/* SEARCH BAR */}
+
+        <div className="library-card-table-toolbar">
+
+          <div className="library-card-search">
+
+            <span className="library-card-search-icon">
+              🔍
+            </span>
+
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(event) =>
+                setSearchTerm(
+                  event.target.value
                 )
               }
-            >
+              placeholder="Search by name..."
+            />
 
-              <option value="All">
-                All
-              </option>
+          </div>
 
-              {STATUS_OPTIONS.map(
-                (status) => (
-                  <option
-                    key={status}
-                    value={status}
-                  >
-                    {status}
-                  </option>
-                )
-              )}
+          <div className="library-card-showing">
 
-            </select>
+            Showing{" "}
+
+            <strong>
+              {displayedRecords.length}
+            </strong>{" "}
+
+            {selectedStatus.toLowerCase()}{" "}
+            record
+            {displayedRecords.length !==
+            1
+              ? "s"
+              : ""}
 
           </div>
 
         </div>
 
+        {/* REQUEST TABLE */}
 
-        {/* =================================================
-            TABLE
-        ================================================= */}
+        <div className="library-card-table-wrapper">
 
-        {filteredRequests.length === 0 ? (
+          {loading ? (
 
-          <div className="library-card-empty">
-
-            <div className="library-card-empty-icon">
-              📋
+            <div className="library-card-empty">
+              Loading requests...
             </div>
 
-            <h3>
-              No Requests Found
-            </h3>
+          ) : displayedRecords.length ===
+            0 ? (
 
-            <p>
-              There are no{" "}
-              {statusFilter !== "All"
-                ? statusFilter.toLowerCase()
-                : ""}{" "}
-              library card requests.
-            </p>
+            <div className="library-card-empty">
 
-          </div>
+              <div className="library-card-empty-icon">
+                ✓
+              </div>
 
-        ) : (
+              <strong>
+                No{" "}
+                {selectedStatus.toLowerCase()}{" "}
+                requests
+              </strong>
 
-          <div className="library-card-table-wrapper">
+              <span>
+                There are currently no records
+                under this status.
+              </span>
+
+            </div>
+
+          ) : (
 
             <table className="library-card-table">
 
@@ -829,11 +1054,7 @@ export default function LibraryCardLostRequest() {
                 <tr>
 
                   <th>
-                    #
-                  </th>
-
-                  <th>
-                    Name
+                    Patron Name
                   </th>
 
                   <th>
@@ -849,15 +1070,302 @@ export default function LibraryCardLostRequest() {
                   </th>
 
                   <th>
+                    Number of Lost
+                  </th>
+
+                  <th>
                     Date Requested
                   </th>
+
+                  {selectedStatus ===
+                    "Claimed" && (
+                    <th>
+                      Date Claimed
+                    </th>
+                  )}
 
                   <th>
                     Status
                   </th>
 
+                  {selectedStatus !==
+                    "Claimed" && (
+                    <th>
+                      Action
+                    </th>
+                  )}
+
+                </tr>
+
+              </thead>
+
+              <tbody>
+
+                {displayedRecords.map(
+                  (record) => {
+
+                    const lostCount =
+                      getLostCount(
+                        records,
+                        record.first_name,
+                        record.last_name
+                      );
+
+                    const isUpdating =
+                      updatingId ===
+                      record.id;
+
+                    return (
+                      <tr
+                        key={record.id}
+                      >
+
+                        <td>
+                          <div className="library-card-name">
+                            {getFullName(
+                              record
+                            )}
+                          </div>
+                        </td>
+
+                        <td>
+                          {record.grade ||
+                            "—"}
+                        </td>
+
+                        <td>
+                          {record.section ||
+                            "—"}
+                        </td>
+
+                        <td>
+                          <span className="library-card-patron-badge">
+                            {
+                              record.patron_type
+                            }
+                          </span>
+                        </td>
+
+                        <td>
+
+                          <span
+                            className={`library-card-lost-count ${
+                              lostCount >= 3
+                                ? "library-card-lost-count-warning"
+                                : ""
+                            }`}
+                          >
+                            {lostCount}
+                          </span>
+
+                        </td>
+
+                        <td>
+                          {formatDate(
+                            record.created_at
+                          )}
+                        </td>
+
+                        {selectedStatus ===
+                          "Claimed" && (
+                          <td>
+
+                            <div className="library-card-claimed-date">
+
+                              <strong>
+                                {formatDate(
+                                  record.claimed_at
+                                )}
+                              </strong>
+
+                              {record.claimed_at && (
+                                <small>
+                                  {formatDateTime(
+                                    record.claimed_at
+                                  )}
+                                </small>
+                              )}
+
+                            </div>
+
+                          </td>
+                        )}
+
+                        <td>
+
+                          <span
+                            className={`library-card-status library-card-status-${String(
+                              record.status
+                            ).toLowerCase()}`}
+                          >
+                            {
+                              record.status
+                            }
+                          </span>
+
+                        </td>
+
+                        {selectedStatus !==
+                          "Claimed" && (
+                          <td>
+
+                            <div className="library-card-actions">
+
+                              {record.status ===
+                                "Pending" && (
+
+                                <button
+                                  type="button"
+                                  className="library-card-action-button library-card-action-print"
+                                  onClick={() =>
+                                    handleStatusChange(
+                                      record,
+                                      "Printed"
+                                    )
+                                  }
+                                  disabled={
+                                    isUpdating
+                                  }
+                                >
+                                  {isUpdating
+                                    ? "Updating..."
+                                    : "Mark Printed"}
+                                </button>
+
+                              )}
+
+                              {record.status ===
+                                "Printed" && (
+
+                                <button
+                                  type="button"
+                                  className="library-card-action-button library-card-action-claim"
+                                  onClick={() =>
+                                    handleStatusChange(
+                                      record,
+                                      "Claimed"
+                                    )
+                                  }
+                                  disabled={
+                                    isUpdating
+                                  }
+                                >
+                                  {isUpdating
+                                    ? "Updating..."
+                                    : "Mark Claimed"}
+                                </button>
+
+                              )}
+
+                            </div>
+
+                          </td>
+                        )}
+
+                      </tr>
+                    );
+                  }
+                )}
+
+              </tbody>
+
+            </table>
+
+          )}
+
+        </div>
+
+      </section>
+
+      {/* =================================================
+          COMPLETED RECORDS
+      ================================================= */}
+
+      <section className="library-card-panel library-card-completed-panel">
+
+        <div className="library-card-panel-header">
+
+          <div>
+            <h2>
+              Completed Records
+            </h2>
+
+            <p>
+              Historical records of library
+              cards that have already been
+              claimed.
+            </p>
+          </div>
+
+          <div className="library-card-completed-count">
+            {completedRecords.length}{" "}
+            completed
+          </div>
+
+        </div>
+
+        <div className="library-card-table-wrapper">
+
+          {loading ? (
+
+            <div className="library-card-empty">
+              Loading completed records...
+            </div>
+
+          ) : completedRecords.length ===
+            0 ? (
+
+            <div className="library-card-empty">
+
+              <div className="library-card-empty-icon">
+                ✓
+              </div>
+
+              <strong>
+                No completed records
+              </strong>
+
+              <span>
+                Claimed library card requests
+                will appear here.
+              </span>
+
+            </div>
+
+          ) : (
+
+            <table className="library-card-table library-card-completed-table">
+
+              <thead>
+
+                <tr>
+
                   <th>
-                    Action
+                    Patron Name
+                  </th>
+
+                  <th>
+                    Grade
+                  </th>
+
+                  <th>
+                    Section
+                  </th>
+
+                  <th>
+                    Patron Type
+                  </th>
+
+                  <th>
+                    Number of Lost
+                  </th>
+
+                  <th>
+                    Date Requested
+                  </th>
+
+                  <th>
+                    Date Claimed
                   </th>
 
                 </tr>
@@ -866,181 +1374,216 @@ export default function LibraryCardLostRequest() {
 
               <tbody>
 
-                {filteredRequests.map(
-                  (request, index) => (
+                {completedRecords.map(
+                  (record) => {
 
-                    <tr
-                      key={request.id}
-                    >
+                    const lostCount =
+                      getLostCount(
+                        records,
+                        record.first_name,
+                        record.last_name
+                      );
 
-                      {/* NUMBER */}
+                    return (
+                      <tr
+                        key={record.id}
+                      >
 
-                      <td>
-                        {index + 1}
-                      </td>
+                        <td>
 
-
-                      {/* NAME */}
-
-                      <td>
-
-                        <div className="library-card-name">
-
-                          <strong>
-                            {formatName(
-                              request
+                          <div className="library-card-name">
+                            {getFullName(
+                              record
                             )}
-                          </strong>
+                          </div>
 
-                        </div>
+                        </td>
 
-                      </td>
+                        <td>
+                          {record.grade ||
+                            "—"}
+                        </td>
 
+                        <td>
+                          {record.section ||
+                            "—"}
+                        </td>
 
-                      {/* GRADE */}
+                        <td>
 
-                      <td>
-                        {request.grade ||
-                          "—"}
-                      </td>
+                          <span className="library-card-patron-badge">
+                            {
+                              record.patron_type
+                            }
+                          </span>
 
+                        </td>
 
-                      {/* SECTION */}
+                        <td>
 
-                      <td>
-                        {request.section ||
-                          "—"}
-                      </td>
+                          <span
+                            className={`library-card-lost-count ${
+                              lostCount >= 3
+                                ? "library-card-lost-count-warning"
+                                : ""
+                            }`}
+                          >
+                            {lostCount}
+                          </span>
 
+                        </td>
 
-                      {/* PATRON TYPE */}
-
-                      <td>
-
-                        <span className="library-patron-type">
-
-                          {request.patron_type}
-
-                        </span>
-
-                      </td>
-
-
-                      {/* DATE */}
-
-                      <td>
-
-                        {formatDate(
-                          request.created_at
-                        )}
-
-                      </td>
-
-
-                      {/* STATUS */}
-
-                      <td>
-
-                        <span
-                          className={`library-card-status ${getStatusClass(
-                            request.status
-                          )}`}
-                        >
-                          {request.status}
-                        </span>
-
-                      </td>
-
-
-                      {/* ACTION */}
-
-                      <td>
-
-                        <div className="library-card-actions">
-
-                          {/* PENDING */}
-
-                          {request.status ===
-                            "Pending" && (
-
-                            <button
-                              className="library-action-button printed"
-                              disabled={
-                                updatingId ===
-                                request.id
-                              }
-                              onClick={() =>
-                                updateStatus(
-                                  request.id,
-                                  "Printed"
-                                )
-                              }
-                            >
-                              {updatingId ===
-                              request.id
-                                ? "Updating..."
-                                : "Mark Printed"}
-                            </button>
-
+                        <td>
+                          {formatDate(
+                            record.created_at
                           )}
+                        </td>
 
+                        <td>
 
-                          {/* PRINTED */}
+                          <div className="library-card-claimed-date">
 
-                          {request.status ===
-                            "Printed" && (
+                            <strong>
+                              {formatDate(
+                                record.claimed_at
+                              )}
+                            </strong>
 
-                            <button
-                              className="library-action-button claimed"
-                              disabled={
-                                updatingId ===
-                                request.id
-                              }
-                              onClick={() =>
-                                updateStatus(
-                                  request.id,
-                                  "Claimed"
-                                )
-                              }
-                            >
-                              {updatingId ===
-                              request.id
-                                ? "Updating..."
-                                : "Mark Claimed"}
-                            </button>
+                            {record.claimed_at && (
+                              <small>
+                                {formatDateTime(
+                                  record.claimed_at
+                                )}
+                              </small>
+                            )}
 
-                          )}
+                          </div>
 
+                        </td>
 
-                          {/* CLAIMED */}
-
-                          {request.status ===
-                            "Claimed" && (
-
-                            <span className="library-completed-label">
-                              Completed
-                            </span>
-
-                          )}
-
-                        </div>
-
-                      </td>
-
-                    </tr>
-
-                  )
+                      </tr>
+                    );
+                  }
                 )}
 
               </tbody>
 
             </table>
 
+          )}
+
+        </div>
+
+      </section>
+
+      {/* =================================================
+          COORDINATOR CONFIRMATION MODAL
+      ================================================= */}
+
+      {showConfirmModal &&
+        pendingRequest && (
+
+        <div className="library-card-modal-overlay">
+
+          <div
+            className="library-card-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="library-card-warning-title"
+          >
+
+            <div className="library-card-modal-icon">
+              !
+            </div>
+
+            <h2 id="library-card-warning-title">
+              Coordinator Confirmation Required
+            </h2>
+
+            <p className="library-card-modal-message">
+
+              The patron already lost{" "}
+
+              <strong>
+                {
+                  pendingRequest.lostCount
+                }{" "}
+                cards
+              </strong>
+              .
+
+            </p>
+
+            <p className="library-card-modal-warning">
+              The patron already lost 3 cards.
+              Confirm first to the coordinator
+              before proceed.
+            </p>
+
+            <div className="library-card-modal-person">
+
+              <strong>
+
+                {
+                  pendingRequest.last_name
+                }
+                ,{" "}
+                {
+                  pendingRequest.first_name
+                }
+
+                {pendingRequest.middle_name
+                  ? ` ${pendingRequest.middle_name}`
+                  : ""}
+
+              </strong>
+
+              <span>
+
+                {
+                  pendingRequest.patron_type
+                }{" "}
+                •{" "}
+                {pendingRequest.grade}{" "}
+                •{" "}
+                {pendingRequest.section}
+
+              </span>
+
+            </div>
+
+            <div className="library-card-modal-actions">
+
+              <button
+                type="button"
+                className="library-card-modal-cancel"
+                onClick={
+                  handleCancelConfirmation
+                }
+                disabled={submitting}
+              >
+                Cancel Request
+              </button>
+
+              <button
+                type="button"
+                className="library-card-modal-approve"
+                onClick={
+                  handleApprovedConfirmation
+                }
+                disabled={submitting}
+              >
+                {submitting
+                  ? "Processing..."
+                  : "Approved / Proceed"}
+              </button>
+
+            </div>
+
           </div>
 
-        )}
-
-      </div>
+        </div>
+      )}
 
     </div>
   );
