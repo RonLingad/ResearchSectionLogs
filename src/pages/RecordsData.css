@@ -1,0 +1,560 @@
+/* =========================================================
+   RECORDS DATA
+========================================================= */
+
+.records-data-page {
+  width: 100%;
+  min-height: 100%;
+  padding: 18px;
+  box-sizing: border-box;
+
+  background: #ffffff;
+  color: #123b63;
+
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+
+/* =========================================================
+   FILTER BAR
+========================================================= */
+
+.records-data-filter-bar {
+  display: flex;
+  align-items: flex-end;
+
+  width: 100%;
+  min-height: 70px;
+
+  padding: 12px 14px;
+  margin-bottom: 14px;
+
+  box-sizing: border-box;
+
+  background: #eef5fb;
+  border: 1px solid #c5d6e6;
+  border-radius: 5px;
+}
+
+.records-data-filter-group {
+  display: flex;
+  flex-direction: column;
+
+  gap: 5px;
+
+  margin-right: 12px;
+}
+
+.records-data-filter-group label {
+  font-size: 10px;
+  font-weight: 700;
+
+  color: #5c7892;
+
+  text-transform: uppercase;
+}
+
+.records-data-filter-group select {
+  width: 145px;
+  height: 36px;
+
+  padding: 0 10px;
+
+  box-sizing: border-box;
+
+  background: #ffffff;
+  color: #123b63;
+
+  border: 1px solid #c5d6e6;
+  border-radius: 4px;
+
+  font-size: 12px;
+
+  outline: none;
+  cursor: pointer;
+}
+
+.records-data-filter-group select:focus {
+  border-color: #0b2a4a;
+}
+
+.records-data-refresh {
+  height: 36px;
+
+  padding: 0 15px;
+
+  background: #0b2a4a;
+  color: #ffffff;
+
+  border: 1px solid #0b2a4a;
+  border-radius: 4px;
+
+  font-size: 12px;
+  font-weight: 700;
+
+  cursor: pointer;
+}
+
+.records-data-refresh:hover {
+  background: #123e68;
+}
+
+.records-data-refresh:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.records-data-filter-spacer {
+  flex: 1;
+}
+
+.records-data-showing {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+
+  min-width: 100px;
+
+  height: 36px;
+
+  padding-left: 14px;
+
+  border-left: 1px solid #c5d6e6;
+}
+
+.records-data-showing span {
+  font-size: 9px;
+  font-weight: 700;
+
+  color: #5c7892;
+
+  text-transform: uppercase;
+}
+
+.records-data-showing strong {
+  margin-top: 2px;
+
+  font-size: 12px;
+  color: #0b2a4a;
+}
+
+
+/* =========================================================
+   MAIN PANEL
+========================================================= */
+
+.records-data-panel {
+  width: 100%;
+
+  margin-bottom: 14px;
+
+  background: #ffffff;
+
+  border: 1px solid #c5d6e6;
+  border-radius: 5px;
+
+  overflow: hidden;
+}
+
+.records-data-panel-header {
+  display: flex;
+  align-items: center;
+
+  min-height: 62px;
+
+  padding: 12px 16px;
+
+  box-sizing: border-box;
+
+  border-bottom: 1px solid #c5d6e6;
+}
+
+.records-data-panel-header h1 {
+  margin: 0;
+
+  font-size: 17px;
+  font-weight: 700;
+
+  color: #0b2a4a;
+}
+
+.records-data-panel-header p {
+  margin: 4px 0 0;
+
+  font-size: 11px;
+
+  color: #5c7892;
+}
+
+
+/* =========================================================
+   GRAPH
+========================================================= */
+
+.records-data-chart {
+  display: flex;
+  flex-direction: column;
+
+  gap: 9px;
+
+  padding: 18px 20px 20px;
+}
+
+.records-data-chart-row {
+  display: grid;
+
+  grid-template-columns: 85px minmax(0, 1fr) 35px;
+
+  align-items: center;
+
+  gap: 10px;
+
+  width: 100%;
+}
+
+.records-data-chart-label {
+  overflow: hidden;
+
+  font-size: 11px;
+  font-weight: 600;
+
+  color: #123b63;
+
+  text-align: right;
+
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.records-data-chart-track {
+  width: 100%;
+  height: 22px;
+
+  background: #f0f3f6;
+
+  border-radius: 3px;
+
+  overflow: hidden;
+}
+
+.records-data-chart-bar {
+  height: 100%;
+  min-width: 2px;
+
+  background: #1565c0;
+
+  border-radius: 3px;
+
+  transition: width 0.25s ease;
+}
+
+.records-data-chart-value {
+  font-size: 11px;
+  font-weight: 700;
+
+  color: #0b2a4a;
+
+  text-align: left;
+}
+
+.records-data-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  min-height: 220px;
+
+  padding: 20px;
+
+  box-sizing: border-box;
+
+  color: #5c7892;
+
+  font-size: 12px;
+
+  text-align: center;
+}
+
+
+/* =========================================================
+   SUMMARY
+========================================================= */
+
+.records-data-summary-section {
+  width: 100%;
+
+  margin-bottom: 14px;
+
+  padding: 14px;
+
+  box-sizing: border-box;
+
+  background: #ffffff;
+
+  border: 1px solid #c5d6e6;
+  border-radius: 5px;
+}
+
+.records-data-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  margin-bottom: 12px;
+}
+
+.records-data-section-heading h2 {
+  margin: 0;
+
+  font-size: 14px;
+  font-weight: 700;
+
+  color: #0b2a4a;
+}
+
+.records-data-section-heading span {
+  padding: 4px 8px;
+
+  background: #eef5fb;
+
+  border-radius: 3px;
+
+  font-size: 10px;
+  font-weight: 700;
+
+  color: #5c7892;
+}
+
+.records-data-summary {
+  display: grid;
+
+  grid-template-columns:
+    repeat(5, minmax(0, 1fr));
+
+  gap: 10px;
+}
+
+.records-data-summary-card {
+  min-height: 82px;
+
+  padding: 12px;
+
+  box-sizing: border-box;
+
+  background: #f9fbfd;
+
+  border: 1px solid #d5e1eb;
+  border-radius: 4px;
+}
+
+.records-data-summary-card span {
+  display: block;
+
+  font-size: 9px;
+  font-weight: 700;
+
+  color: #5c7892;
+
+  text-transform: uppercase;
+}
+
+.records-data-summary-card strong {
+  display: block;
+
+  margin-top: 8px;
+
+  font-size: 21px;
+  line-height: 1.1;
+
+  color: #0b2a4a;
+}
+
+.records-data-summary-card
+.records-data-summary-text {
+  font-size: 15px;
+
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+
+/* =========================================================
+   EXPORT
+========================================================= */
+
+.records-data-export-section {
+  display: flex;
+  align-items: center;
+
+  justify-content: space-between;
+
+  width: 100%;
+
+  padding: 13px 14px;
+
+  box-sizing: border-box;
+
+  background: #eef5fb;
+
+  border: 1px solid #c5d6e6;
+  border-radius: 5px;
+}
+
+.records-data-export-section > div {
+  display: flex;
+  flex-direction: column;
+
+  gap: 3px;
+}
+
+.records-data-export-section strong {
+  font-size: 12px;
+
+  color: #0b2a4a;
+}
+
+.records-data-export-section span {
+  font-size: 10px;
+
+  color: #5c7892;
+}
+
+.records-data-export-button {
+  height: 36px;
+
+  padding: 0 18px;
+
+  background: #d32f2f;
+  color: #ffffff;
+
+  border: 1px solid #d32f2f;
+  border-radius: 4px;
+
+  font-size: 12px;
+  font-weight: 700;
+
+  cursor: pointer;
+}
+
+.records-data-export-button:hover {
+  background: #b92525;
+  border-color: #b92525;
+}
+
+.records-data-export-button:disabled {
+  background: #b9b9b9;
+  border-color: #b9b9b9;
+
+  cursor: not-allowed;
+}
+
+
+/* =========================================================
+   TABLET
+========================================================= */
+
+@media (max-width: 950px) {
+  .records-data-summary {
+    grid-template-columns:
+      repeat(3, minmax(0, 1fr));
+  }
+}
+
+
+/* =========================================================
+   MOBILE
+========================================================= */
+
+@media (max-width: 700px) {
+  .records-data-page {
+    padding: 12px;
+  }
+
+  .records-data-filter-bar {
+    align-items: stretch;
+
+    flex-wrap: wrap;
+
+    gap: 10px;
+  }
+
+  .records-data-filter-group {
+    flex: 1;
+    margin-right: 0;
+  }
+
+  .records-data-filter-group select {
+    width: 100%;
+  }
+
+  .records-data-refresh {
+    align-self: flex-end;
+  }
+
+  .records-data-filter-spacer {
+    display: none;
+  }
+
+  .records-data-showing {
+    width: 100%;
+
+    height: auto;
+
+    padding: 8px 0 0;
+
+    border-left: none;
+    border-top: 1px solid #c5d6e6;
+  }
+
+  .records-data-summary {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+
+  .records-data-export-section {
+    align-items: stretch;
+
+    flex-direction: column;
+
+    gap: 12px;
+  }
+
+  .records-data-export-button {
+    width: 100%;
+  }
+}
+
+
+/* =========================================================
+   SMALL MOBILE
+========================================================= */
+
+@media (max-width: 450px) {
+  .records-data-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .records-data-chart {
+    padding: 15px 10px;
+  }
+
+  .records-data-chart-row {
+    grid-template-columns:
+      65px minmax(0, 1fr) 28px;
+
+    gap: 7px;
+  }
+
+  .records-data-chart-label {
+    font-size: 9px;
+  }
+
+  .records-data-chart-value {
+    font-size: 10px;
+  }
+
+  .records-data-chart-track {
+    height: 20px;
+  }
+}

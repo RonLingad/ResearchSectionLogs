@@ -5,23 +5,104 @@ import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
+import Purpose from "./Purpose";
+import LibraryCardLostRequest from "./LibraryCardLostRequest";
+import UsageData from "./UsageData";
+import RecordsData from "./RecordsData";
+
+// ==========================================
+// PREDEFINED ADMIN LOGIN
+// ==========================================
+
+const ADMIN_USERNAME = "libraryadmin";
+const ADMIN_PASSWORD = "imcpassword";
+
 export default function AdminControl() {
+  // ==========================================
+  // LOGIN
+  // ==========================================
+
+  const [isLoggedIn, setIsLoggedIn] = useState(
+    sessionStorage.getItem("libraryAdminLoggedIn") === "true"
+  );
+
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [loginError, setLoginError] = useState("");
+
+  function handleLogin(e) {
+    e.preventDefault();
+
+    if (
+      username === ADMIN_USERNAME &&
+      password === ADMIN_PASSWORD
+    ) {
+      sessionStorage.setItem(
+        "libraryAdminLoggedIn",
+        "true"
+      );
+
+      setIsLoggedIn(true);
+      setUsername("");
+      setPassword("");
+      setLoginError("");
+    } else {
+      setLoginError(
+        "Invalid username or password."
+      );
+    }
+  }
+
+  function handleLogout() {
+    sessionStorage.removeItem(
+      "libraryAdminLoggedIn"
+    );
+
+    setIsLoggedIn(false);
+    setUsername("");
+    setPassword("");
+    setLoginError("");
+  }
+
+  // ==========================================
+  // ACTIVE SECTION
+  // ==========================================
+
+  const [activePage, setActivePage] = useState("records");
+
+  // ==========================================
+  // DATA
+  // ==========================================
+
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Filters State
+  // ==========================================
+  // FILTERS
+  // ==========================================
+
   const [search, setSearch] = useState("");
   const [gradeFilter, setGradeFilter] = useState("All");
   const [monthFilter, setMonthFilter] = useState("All");
   const [yearFilter, setYearFilter] = useState("All");
 
-  // Pagination State (20 items per page)
+  // ==========================================
+  // PAGINATION
+  // ==========================================
+
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 20;
+
+  const itemsPerPage = 15;
+
+  // ==========================================
+  // FETCH DATA
+  // ==========================================
 
   useEffect(() => {
-    fetchLogs();
-  }, []);
+    if (isLoggedIn) {
+      fetchLogs();
+    }
+  }, [isLoggedIn]);
 
   async function fetchLogs() {
     setLoading(true);
@@ -29,10 +110,15 @@ export default function AdminControl() {
     const { data, error } = await supabase
       .from("logs")
       .select("*")
-      .order("session_in", { ascending: false });
+      .order("session_in", {
+        ascending: false,
+      });
 
     if (error) {
-      console.error("Error fetching logs:", error);
+      console.error(
+        "Error fetching logs:",
+        error
+      );
     } else {
       setLogs(data || []);
     }
@@ -40,668 +126,1437 @@ export default function AdminControl() {
     setLoading(false);
   }
 
-  // Extract unique available years from logs
+  // ==========================================
+  // AVAILABLE YEARS
+  // ==========================================
+
   const availableYears = useMemo(() => {
     const years = new Set();
+
     logs.forEach((log) => {
-      const dateVal = log.session_in || log.created_at;
-      if (dateVal) {
-        years.add(new Date(dateVal).getFullYear());
-      }
+      const dateValue =
+        log.session_in ||
+        log.created_at;
+
+      if (!dateValue) return;
+
+      const year =
+        new Date(dateValue).getFullYear();
+
+      years.add(year);
     });
-    return Array.from(years).sort((a, b) => b - a);
+
+    return Array.from(years).sort(
+      (a, b) => b - a
+    );
   }, [logs]);
 
-  // Reset all filters & reset pagination to Page 1
-  const resetFilters = () => {
+  // ==========================================
+  // FILTER LOGS
+  // ==========================================
+
+  const filteredLogs = useMemo(() => {
+    return logs.filter((log) => {
+      const studentName =
+        log.fullname?.toLowerCase() || "";
+
+      const searchText =
+        search.toLowerCase().trim();
+
+      const matchesSearch =
+        studentName.includes(searchText);
+
+      const matchesGrade =
+        gradeFilter === "All" ||
+        log.grade?.toLowerCase() ===
+          gradeFilter.toLowerCase();
+
+      const dateValue =
+        log.session_in ||
+        log.created_at;
+
+      let matchesMonth = true;
+      let matchesYear = true;
+
+      if (dateValue) {
+        const date = new Date(dateValue);
+
+        const month =
+          date.getMonth() + 1;
+
+        const year =
+          date.getFullYear();
+
+        if (monthFilter !== "All") {
+          matchesMonth =
+            month === Number(monthFilter);
+        }
+
+        if (yearFilter !== "All") {
+          matchesYear =
+            year === Number(yearFilter);
+        }
+      }
+
+      return (
+        matchesSearch &&
+        matchesGrade &&
+        matchesMonth &&
+        matchesYear
+      );
+    });
+  }, [
+    logs,
+    search,
+    gradeFilter,
+    monthFilter,
+    yearFilter,
+  ]);
+
+  // ==========================================
+  // PAGINATION
+  // ==========================================
+
+  const totalPages =
+    Math.ceil(
+      filteredLogs.length /
+        itemsPerPage
+    ) || 1;
+
+  const currentTableData = useMemo(() => {
+    const start =
+      (currentPage - 1) *
+      itemsPerPage;
+
+    return filteredLogs.slice(
+      start,
+      start + itemsPerPage
+    );
+  }, [
+    filteredLogs,
+    currentPage,
+  ]);
+
+  function changePage(page) {
+    if (
+      page >= 1 &&
+      page <= totalPages
+    ) {
+      setCurrentPage(page);
+    }
+  }
+
+  // ==========================================
+  // FILTER HANDLER
+  // ==========================================
+
+  function updateFilter(setter, value) {
+    setter(value);
+    setCurrentPage(1);
+  }
+
+  function resetFilters() {
     setSearch("");
     setGradeFilter("All");
     setMonthFilter("All");
     setYearFilter("All");
     setCurrentPage(1);
-  };
+  }
 
-  // Check if any filter is active
-  const isFiltered =
-    search !== "" ||
-    gradeFilter !== "All" ||
-    monthFilter !== "All" ||
-    yearFilter !== "All";
-
-  // Helper to handle filter state change and reset pagination to page 1
-  const handleFilterChange = (setter, value) => {
-    setter(value);
-    setCurrentPage(1);
-  };
-
-  // ===============================
-  // FILTERS LOGIC
-  // ===============================
-
-  const filteredLogs = useMemo(() => {
-    return logs.filter((log) => {
-      // Name match
-      const matchName = log.fullname
-        ?.toLowerCase()
-        .includes(search.toLowerCase());
-
-      // Grade match
-      const matchGrade =
-        gradeFilter === "All" ||
-        log.grade?.toLowerCase() === gradeFilter.toLowerCase();
-
-      // Date match
-      const dateVal = log.session_in || log.created_at;
-      const logDate = dateVal ? new Date(dateVal) : null;
-
-      const month = logDate ? logDate.getMonth() + 1 : 0;
-      const year = logDate ? logDate.getFullYear() : 0;
-
-      const matchMonth =
-        monthFilter === "All" || month === Number(monthFilter);
-      const matchYear =
-        yearFilter === "All" || year === Number(yearFilter);
-
-      return matchName && matchGrade && matchMonth && matchYear;
-    });
-  }, [logs, search, gradeFilter, monthFilter, yearFilter]);
-
-  // ===============================
-  // PAGINATION LOGIC
-  // ===============================
-
-  const totalPages = Math.ceil(filteredLogs.length / itemsPerPage) || 1;
-
-  const currentTableData = useMemo(() => {
-    const firstPageIndex = (currentPage - 1) * itemsPerPage;
-    const lastPageIndex = firstPageIndex + itemsPerPage;
-    return filteredLogs.slice(firstPageIndex, lastPageIndex);
-  }, [filteredLogs, currentPage, itemsPerPage]);
-
-  const handlePageChange = (page) => {
-    if (page >= 1 && page <= totalPages) {
-      setCurrentPage(page);
-    }
-  };
-
-  // ===============================
-  // ANALYTICS & PEAK HOURS LOGIC
-  // ===============================
+  // ==========================================
+  // ANALYTICS
+  // ==========================================
 
   const analytics = useMemo(() => {
     const today = new Date();
 
-    const todayLogs = logs.filter((log) => {
-      const dateVal = log.session_in || log.created_at;
-      if (!dateVal) return false;
-      const date = new Date(dateVal);
-      return date.toDateString() === today.toDateString();
-    }).length;
+    let todayCount = 0;
+    let monthCount = 0;
 
-    const monthLogs = logs.filter((log) => {
-      const dateVal = log.session_in || log.created_at;
-      if (!dateVal) return false;
-      const date = new Date(dateVal);
-      return (
-        date.getMonth() === today.getMonth() &&
-        date.getFullYear() === today.getFullYear()
-      );
-    }).length;
+    const hourlyUsage = {};
 
-    const gradeCounts = {};
-    const hourCounts = {};
+    logs.forEach((log) => {
+      const dateValue =
+        log.session_in ||
+        log.created_at;
 
-    filteredLogs.forEach((log) => {
-      // Grade tally
-      const gradeKey = log.grade ? log.grade.toUpperCase() : "UNSPECIFIED";
-      gradeCounts[gradeKey] = (gradeCounts[gradeKey] || 0) + 1;
+      if (!dateValue) return;
 
-      // Peak hour tally
-      const sessionInVal = log.session_in || log.created_at;
-      if (sessionInVal) {
-        const hour = new Date(sessionInVal).getHours();
-        hourCounts[hour] = (hourCounts[hour] || 0) + 1;
+      const date =
+        new Date(dateValue);
+
+      // TODAY
+      if (
+        date.toDateString() ===
+        today.toDateString()
+      ) {
+        todayCount++;
       }
+
+      // THIS MONTH
+      if (
+        date.getMonth() ===
+          today.getMonth() &&
+        date.getFullYear() ===
+          today.getFullYear()
+      ) {
+        monthCount++;
+      }
+
+      // PEAK HOUR
+      const hour =
+        date.getHours();
+
+      hourlyUsage[hour] =
+        (hourlyUsage[hour] || 0) + 1;
     });
 
-    // Find peak hour
     let peakHour = null;
-    let maxHourCount = 0;
-    Object.entries(hourCounts).forEach(([hour, count]) => {
-      if (count > maxHourCount) {
-        maxHourCount = count;
-        peakHour = Number(hour);
+    let peakCount = 0;
+
+    Object.entries(
+      hourlyUsage
+    ).forEach(
+      ([hour, count]) => {
+        if (count > peakCount) {
+          peakHour = Number(hour);
+          peakCount = count;
+        }
       }
-    });
+    );
 
-    let peakHourText = "N/A";
+    let peakText = "N/A";
+
     if (peakHour !== null) {
-      const startPeriod = peakHour >= 12 ? "PM" : "AM";
-      const startFormatted = peakHour % 12 === 0 ? 12 : peakHour % 12;
-      const endHour = (peakHour + 1) % 24;
-      const endPeriod = endHour >= 12 ? "PM" : "AM";
-      const endFormatted = endHour % 12 === 0 ? 12 : endHour % 12;
+      const startHour =
+        peakHour % 12 === 0
+          ? 12
+          : peakHour % 12;
 
-      peakHourText = `${startFormatted}:00 ${startPeriod} - ${endFormatted}:00 ${endPeriod} (${maxHourCount} logs)`;
+      const endHourValue =
+        (peakHour + 1) % 24;
+
+      const endHour =
+        endHourValue % 12 === 0
+          ? 12
+          : endHourValue % 12;
+
+      const startPeriod =
+        peakHour >= 12
+          ? "PM"
+          : "AM";
+
+      const endPeriod =
+        endHourValue >= 12
+          ? "PM"
+          : "AM";
+
+      peakText =
+        `${startHour}:00 ${startPeriod} - ${endHour}:00 ${endPeriod}`;
     }
 
     return {
       total: logs.length,
-      today: todayLogs,
-      month: monthLogs,
-      filteredTotal: filteredLogs.length,
-      gradeCounts,
-      peakHourText,
+      today: todayCount,
+      month: monthCount,
+      filtered: filteredLogs.length,
+      peakText,
+      peakCount,
     };
-  }, [logs, filteredLogs]);
+  }, [
+    logs,
+    filteredLogs,
+  ]);
 
-  // ===============================
-  // FORMAT DATE / TIME
-  // ===============================
+  // ==========================================
+  // DATE FORMAT
+  // ==========================================
 
-  function formatDate(dateValue) {
-    if (!dateValue) return "-";
-    return new Date(dateValue).toLocaleDateString("en-PH", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
+  function formatDate(value) {
+    if (!value) return "-";
+
+    return new Date(
+      value
+    ).toLocaleDateString(
+      "en-PH",
+      {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      }
+    );
   }
 
-  function formatTime(dateValue) {
-    if (!dateValue) return "-";
-    return new Date(dateValue).toLocaleTimeString("en-PH", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-    });
+  // ==========================================
+  // TIME FORMAT
+  // ==========================================
+
+  function formatTime(value) {
+    if (!value) return "-";
+
+    return new Date(
+      value
+    ).toLocaleTimeString(
+      "en-PH",
+      {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+      }
+    );
   }
 
-  // ===============================
-  // EXPORT TO EXCEL
-  // ===============================
+  // ==========================================
+  // EXCEL EXPORT
+  // ==========================================
 
   function exportExcel() {
-    if (filteredLogs.length === 0) {
-      alert("No data available to export!");
+    if (
+      filteredLogs.length === 0
+    ) {
+      alert(
+        "No data available to export."
+      );
+
       return;
     }
 
-    const excelData = filteredLogs.map((log) => {
-      const sessionInVal = log.session_in || log.created_at;
-      const sessionOutVal = log.session_out;
+    const data =
+      filteredLogs.map(
+        (log) => {
+          const sessionIn =
+            log.session_in ||
+            log.created_at;
 
-      return {
-        "Student Name": log.fullname ? log.fullname.toUpperCase() : "N/A",
-        "Grade Level": log.grade ? log.grade.toUpperCase() : "N/A",
-        Date: formatDate(sessionInVal),
-        "Session In": formatTime(sessionInVal),
-        "Session Out": formatTime(sessionOutVal),
-      };
-    });
+          return {
+            "Student Name":
+              log.fullname ||
+              "N/A",
 
-    const worksheet = XLSX.utils.json_to_sheet(excelData);
+            Grade:
+              log.grade ||
+              "N/A",
 
-    worksheet["!cols"] = [
-      { wch: 28 },
-      { wch: 15 },
-      { wch: 15 },
-      { wch: 15 },
-      { wch: 15 },
-    ];
+            Date:
+              formatDate(
+                sessionIn
+              ),
 
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Logs");
+            "Session In":
+              formatTime(
+                sessionIn
+              ),
 
-    const dateStamp = new Date().toISOString().split("T")[0];
-    XLSX.writeFile(workbook, `Internet_Research_Logs_${dateStamp}.xlsx`);
+            "Session Out":
+              formatTime(
+                log.session_out
+              ),
+          };
+        }
+      );
+
+    const worksheet =
+      XLSX.utils.json_to_sheet(
+        data
+      );
+
+    const workbook =
+      XLSX.utils.book_new();
+
+    XLSX.utils.book_append_sheet(
+      workbook,
+      worksheet,
+      "Usage Logs"
+    );
+
+    XLSX.writeFile(
+      workbook,
+      "Internet_Research_Logs.xlsx"
+    );
   }
 
-  // ===============================
-  // EXPORT TO PDF
-  // ===============================
+  // ==========================================
+  // PDF EXPORT
+  // ==========================================
 
   function exportPDF() {
-    if (filteredLogs.length === 0) {
-      alert("No data available to export!");
+    if (
+      filteredLogs.length === 0
+    ) {
+      alert(
+        "No data available to export."
+      );
+
       return;
     }
 
     const doc = new jsPDF();
 
-    // 1. Header Title Block (Arial 12pt Bold)
-    doc.setFont("arial", "bold");
-    doc.setFontSize(12);
-    doc.text("HOLY FAMILY ACADEMY", 105, 14, { align: "center" });
+    doc.setFontSize(16);
 
-    doc.setFont("arial", "normal");
-    doc.setFontSize(10);
-    doc.text("Internet Research Section Logs Report", 105, 20, {
-      align: "center",
-    });
-
-    // Solid Divider Line
-    doc.setDrawColor(0, 0, 0);
-    doc.setLineWidth(0.5);
-    doc.line(14, 24, 196, 24);
-
-    // 2. Metadata & Analytics
-    doc.setFont("arial", "normal");
-    doc.setFontSize(10);
-    doc.text(`Generated: ${new Date().toLocaleString("en-PH")}`, 14, 30);
-    doc.text(`Total Records Displayed: ${analytics.filteredTotal}`, 14, 35);
-    doc.text(`Peak Usage Duration: ${analytics.peakHourText}`, 14, 40);
-
-    // 3. Main Table Body Construction
-    const tableBody = filteredLogs.map((log, index) => {
-      const sessionInVal = log.session_in || log.created_at;
-      const sessionOutVal = log.session_out;
-
-      return [
-        index + 1,
-        log.fullname ? log.fullname.toUpperCase() : "-",
-        log.grade ? log.grade.toUpperCase() : "-",
-        formatDate(sessionInVal),
-        formatTime(sessionInVal),
-        formatTime(sessionOutVal),
-      ];
-    });
-
-    // Main Logs Table - Font Size 11 & Arial Font
-    autoTable(doc, {
-      startY: 45,
-      head: [["#", "Student Name", "Grade", "Date", "Session In", "Session Out"]],
-      body: tableBody,
-      theme: "grid",
-      styles: {
-        font: "arial",
-        fontSize: 10,
-        cellPadding: 3,
-        textColor: [0, 0, 0],
-        lineColor: [0, 0, 0],
-        lineWidth: 0.1,
-      },
-      headStyles: {
-        font: "arial",
-        fontSize: 11,
-        fillColor: [240, 240, 240],
-        textColor: [0, 0, 0],
-        fontStyle: "bold",
-        lineWidth: 0.2,
-      },
-      columnStyles: {
-        0: { cellWidth: 12, halign: "center" },
-      },
-    });
-
-    // 4. Grade Level Summary Breakdown Table
-    let finalY = doc.lastAutoTable.finalY + 10;
-
-    // Check if new page is needed for summary table
-    if (finalY > 220) {
-      doc.addPage();
-      finalY = 20;
-    }
-
-    doc.setFont("arial", "bold");
-    doc.setFontSize(11);
-    doc.text("Grade Level Usage Summary", 14, finalY);
-
-    const gradeSummaryData = Object.entries(analytics.gradeCounts).map(
-      ([grade, count]) => [
-        grade,
-        count.toString(),
-        `${((count / (analytics.filteredTotal || 1)) * 100).toFixed(1)}%`,
-      ]
+    doc.text(
+      "HOLY FAMILY ACADEMY",
+      105,
+      15,
+      {
+        align: "center",
+      }
     );
 
+    doc.setFontSize(11);
+
+    doc.text(
+      "Internet & Research Section",
+      105,
+      22,
+      {
+        align: "center",
+      }
+    );
+
+    doc.setFontSize(10);
+
+    doc.text(
+      `Total Records: ${filteredLogs.length}`,
+      14,
+      32
+    );
+
+    doc.text(
+      `Peak Usage: ${analytics.peakText}`,
+      14,
+      38
+    );
+
+    const tableData =
+      filteredLogs.map(
+        (log, index) => {
+          const sessionIn =
+            log.session_in ||
+            log.created_at;
+
+          return [
+            index + 1,
+            log.fullname || "-",
+            log.grade || "-",
+            formatDate(
+              sessionIn
+            ),
+            formatTime(
+              sessionIn
+            ),
+            formatTime(
+              log.session_out
+            ),
+          ];
+        }
+      );
+
     autoTable(doc, {
-      startY: finalY + 4,
-      head: [["Grade Level / Role", "Total Logs", "Percentage (%)"]],
-      body: gradeSummaryData,
+      startY: 45,
+
+      head: [
+        [
+          "#",
+          "Student Name",
+          "Grade",
+          "Date",
+          "Session In",
+          "Session Out",
+        ],
+      ],
+
+      body: tableData,
+
       theme: "grid",
+
       styles: {
-        font: "arial",
-        fontSize: 11,
+        fontSize: 9,
         cellPadding: 3,
-        textColor: [0, 0, 0],
-        lineColor: [0, 0, 0],
-        lineWidth: 0.1,
       },
+
       headStyles: {
-        font: "arial",
-        fontSize: 11,
-        fillColor: [240, 240, 240],
-        textColor: [0, 0, 0],
-        fontStyle: "bold",
-        lineWidth: 0.2,
+        fontSize: 9,
       },
-      columnStyles: {
-        0: { cellWidth: 55 },
-        1: { cellWidth: 30, halign: "center" },
-        2: { cellWidth: 35, halign: "center" },
-      },
-      tableWidth: 120,
     });
 
-    // 5. Page Numbers Footer
-    const pageCount = doc.internal.getNumberOfPages();
-    for (let i = 1; i <= pageCount; i++) {
-      doc.setPage(i);
-      doc.setFont("arial", "normal");
-      doc.setFontSize(10);
-      doc.text(`Page ${i} of ${pageCount}`, 196, 287, { align: "right" });
-    }
-
-    const dateStamp = new Date().toISOString().split("T")[0];
-    doc.save(`Internet_Research_Report_${dateStamp}.pdf`);
+    doc.save(
+      "Internet_Research_Report.pdf"
+    );
   }
 
-  return (
-    <div className="admin-page">
-      <header className="admin-header">
-        <div>
-          <h1>Internet & Research Section</h1>
-          <p>Student Computer Usage Logs & Analytics Dashboard</p>
-        </div>
-      </header>
+  // ==========================================
+  // SIDEBAR MENU ITEM CLASS
+  // ==========================================
 
-      {/* ===========================
-            ANALYTICS DASHBOARD
-      =========================== */}
-      <div className="analytics">
-        <div className="analytics-box">
-          <h2>{analytics.total}</h2>
-          <span>Total Logs</span>
-        </div>
+  function menuClass(page) {
+    return activePage === page
+      ? "menu-item active"
+      : "menu-item";
+  }
 
-        <div className="analytics-box">
-          <h2>{analytics.today}</h2>
-          <span>Today's Logs</span>
-        </div>
+  // ==========================================
+  // LOGIN SCREEN
+  // ==========================================
 
-        <div className="analytics-box">
-          <h2>{analytics.month}</h2>
-          <span>This Month</span>
-        </div>
+  if (!isLoggedIn) {
+    return (
+      <div className="admin-login-page">
 
-        <div className="analytics-box">
-          <h2 style={{ fontSize: "1.1rem" }}>{analytics.peakHourText}</h2>
-          <span>Peak Usage Hours</span>
-        </div>
-      </div>
+        <div className="admin-login-card">
 
-      {/* ===========================
-            TOOLBAR & FILTERS
-      =========================== */}
-      <div className="toolbar">
-        <div className="toolbar-filters">
-          <div className="search-wrapper">
-            <svg
-              className="search-icon"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
+          <div className="admin-login-header">
+
+            <h1>
+              Library Admin
+            </h1>
+
+            <p>
+              Internet & Research Section
+            </p>
+
+          </div>
+
+          <form
+            onSubmit={handleLogin}
+          >
+
+            {/* USERNAME */}
+
+            <div className="admin-login-field">
+
+              <label>
+                Username
+              </label>
+
+              <input
+                type="text"
+                value={username}
+                onChange={(e) =>
+                  setUsername(
+                    e.target.value
+                  )
+                }
+                placeholder="Enter username"
+                autoComplete="username"
+                required
+              />
+
+            </div>
+
+
+            {/* PASSWORD */}
+
+            <div className="admin-login-field">
+
+              <label>
+                Password
+              </label>
+
+              <input
+                type="password"
+                value={password}
+                onChange={(e) =>
+                  setPassword(
+                    e.target.value
+                  )
+                }
+                placeholder="Enter password"
+                autoComplete="current-password"
+                required
+              />
+
+            </div>
+
+
+            {/* ERROR */}
+
+            {loginError && (
+              <div className="admin-login-error">
+                {loginError}
+              </div>
+            )}
+
+
+            {/* LOGIN */}
+
+            <button
+              type="submit"
+              className="admin-login-button"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-              ></path>
-            </svg>
-            <input
-              type="text"
-              placeholder="Search by student name..."
-              value={search}
-              onChange={(e) => handleFilterChange(setSearch, e.target.value)}
-            />
-            {search && (
+              Login
+            </button>
+
+          </form>
+
+        </div>
+
+      </div>
+    );
+  }
+
+  // ==========================================
+  // MAIN ADMIN PANEL
+  // ==========================================
+
+  return (
+    <div className="admin-panel">
+
+      {/* ======================================
+          SIDEBAR
+      ====================================== */}
+
+      <aside className="admin-sidebar">
+
+        {/* BRAND */}
+
+        <div className="sidebar-brand">
+
+          <h1>
+            Admin Panel
+          </h1>
+
+          <span>
+            Internet & Research
+          </span>
+
+        </div>
+
+
+        {/* MENU */}
+
+        <div className="sidebar-menu">
+
+          {/* RECORDS */}
+
+          <button
+            type="button"
+            className={menuClass(
+              "records"
+            )}
+            onClick={() =>
+              setActivePage(
+                "records"
+              )
+            }
+          >
+            Records
+          </button>
+
+
+          {/* RECORD DATA */}
+
+          <button
+            type="button"
+            className={menuClass(
+              "records-data"
+            )}
+            onClick={() =>
+              setActivePage(
+                "records-data"
+              )
+            }
+          >
+            Record Data
+          </button>
+
+
+          {/* USAGE */}
+
+          <button
+            type="button"
+            className={menuClass(
+              "usage"
+            )}
+            onClick={() =>
+              setActivePage(
+                "usage"
+              )
+            }
+          >
+            Usage
+          </button>
+
+
+          {/* USAGE DATA */}
+
+          <button
+            type="button"
+            className={menuClass(
+              "usage-data"
+            )}
+            onClick={() =>
+              setActivePage(
+                "usage-data"
+              )
+            }
+          >
+            Usage Data
+          </button>
+
+
+          {/* LIBRARY CARD LOST REQUEST */}
+
+          <button
+            type="button"
+            className={menuClass(
+              "library-card-lost"
+            )}
+            onClick={() =>
+              setActivePage(
+                "library-card-lost"
+              )
+            }
+          >
+            Library Card Lost Request
+          </button>
+
+        </div>
+
+
+        {/* ====================================
+            ANALYTICS
+        ==================================== */}
+
+        <div className="sidebar-analytics">
+
+          <div className="menu-title">
+            ANALYTICS
+          </div>
+
+
+          {/* TOTAL */}
+
+          <div className="side-stat">
+
+            <span>
+              Total
+            </span>
+
+            <strong>
+              {analytics.total}
+            </strong>
+
+          </div>
+
+
+          {/* TODAY */}
+
+          <div className="side-stat">
+
+            <span>
+              Today
+            </span>
+
+            <strong>
+              {analytics.today}
+            </strong>
+
+          </div>
+
+
+          {/* THIS MONTH */}
+
+          <div className="side-stat">
+
+            <span>
+              This Month
+            </span>
+
+            <strong>
+              {analytics.month}
+            </strong>
+
+          </div>
+
+
+          {/* SHOWING */}
+
+          <div className="side-stat">
+
+            <span>
+              Showing
+            </span>
+
+            <strong>
+              {analytics.filtered}
+            </strong>
+
+          </div>
+
+
+          {/* PEAK */}
+
+          <div className="side-peak">
+
+            <span>
+              Peak Usage
+            </span>
+
+            <strong>
+              {analytics.peakText}
+            </strong>
+
+            <small>
+              {analytics.peakCount} records
+            </small>
+
+          </div>
+
+        </div>
+
+
+        {/* ====================================
+            LOGOUT
+        ==================================== */}
+
+        <div className="sidebar-logout">
+
+          <button
+            type="button"
+            className="logout-button"
+            onClick={handleLogout}
+          >
+            Log Out
+          </button>
+
+        </div>
+
+      </aside>
+
+
+      {/* ======================================
+          MAIN CONTENT
+      ====================================== */}
+
+      <main className="admin-content">
+
+
+        {/* ====================================
+            RECORDS
+        ==================================== */}
+
+        {activePage ===
+          "records" && (
+          <>
+
+            {/* TOP BAR */}
+
+            <div className="top-bar">
+
+              <div className="breadcrumb">
+
+                Home
+
+                <span>
+                  /
+                </span>
+
+                Records
+
+              </div>
+
+
+              <div className="result-count">
+
+                Results{" "}
+
+                <strong>
+                  {
+                    filteredLogs.length
+                  }
+                </strong>
+
+              </div>
+
+            </div>
+
+
+            {/* FILTER BAR */}
+
+            <div className="control-bar">
+
+              {/* SEARCH */}
+
+              <div className="search-box">
+
+                <input
+                  type="text"
+                  placeholder="Search student name"
+                  value={search}
+                  onChange={(e) =>
+                    updateFilter(
+                      setSearch,
+                      e.target.value
+                    )
+                  }
+                />
+
+                <button
+                  type="button"
+                  className="search-button"
+                >
+                  Search
+                </button>
+
+              </div>
+
+
+              {/* GRADE */}
+
+              <select
+                value={gradeFilter}
+                onChange={(e) =>
+                  updateFilter(
+                    setGradeFilter,
+                    e.target.value
+                  )
+                }
+              >
+
+                <option value="All">
+                  All Grades
+                </option>
+
+                <option value="Grade 1">
+                  Grade 1
+                </option>
+
+                <option value="Grade 2">
+                  Grade 2
+                </option>
+
+                <option value="Grade 3">
+                  Grade 3
+                </option>
+
+                <option value="Grade 4">
+                  Grade 4
+                </option>
+
+                <option value="Grade 5">
+                  Grade 5
+                </option>
+
+                <option value="Grade 6">
+                  Grade 6
+                </option>
+
+                <option value="Teacher">
+                  Teacher
+                </option>
+
+                <option value="Non-Teaching Personnel">
+                  Non-Teaching Personnel
+                </option>
+
+              </select>
+
+
+              {/* MONTH */}
+
+              <select
+                value={monthFilter}
+                onChange={(e) =>
+                  updateFilter(
+                    setMonthFilter,
+                    e.target.value
+                  )
+                }
+              >
+
+                <option value="All">
+                  All Months
+                </option>
+
+                <option value="1">
+                  January
+                </option>
+
+                <option value="2">
+                  February
+                </option>
+
+                <option value="3">
+                  March
+                </option>
+
+                <option value="4">
+                  April
+                </option>
+
+                <option value="5">
+                  May
+                </option>
+
+                <option value="6">
+                  June
+                </option>
+
+                <option value="7">
+                  July
+                </option>
+
+                <option value="8">
+                  August
+                </option>
+
+                <option value="9">
+                  September
+                </option>
+
+                <option value="10">
+                  October
+                </option>
+
+                <option value="11">
+                  November
+                </option>
+
+                <option value="12">
+                  December
+                </option>
+
+              </select>
+
+
+              {/* YEAR */}
+
+              <select
+                value={yearFilter}
+                onChange={(e) =>
+                  updateFilter(
+                    setYearFilter,
+                    e.target.value
+                  )
+                }
+              >
+
+                <option value="All">
+                  All Years
+                </option>
+
+                {availableYears.map(
+                  (year) => (
+                    <option
+                      key={year}
+                      value={year}
+                    >
+                      {year}
+                    </option>
+                  )
+                )}
+
+              </select>
+
+
+              {/* RESET */}
+
               <button
                 type="button"
-                className="clear-search-btn"
-                onClick={() => handleFilterChange(setSearch, "")}
-                title="Clear search"
+                className="reset-button"
+                onClick={
+                  resetFilters
+                }
               >
-                ✕
+                Reset
               </button>
-            )}
-          </div>
 
-          <select
-            value={gradeFilter}
-            onChange={(e) => handleFilterChange(setGradeFilter, e.target.value)}
-          >
-            <option value="All">All Grades</option>
-            <option value="Grade 1">Grade 1</option>
-            <option value="Grade 2">Grade 2</option>
-            <option value="Grade 3">Grade 3</option>
-            <option value="Grade 4">Grade 4</option>
-            <option value="Grade 5">Grade 5</option>
-            <option value="Grade 6">Grade 6</option>
-            <option value="Teacher">Teacher</option>
-            <option value="Non-Teaching Personnel">
-              Non-Teaching Personnel
-            </option>
-          </select>
 
-          <select
-            value={monthFilter}
-            onChange={(e) => handleFilterChange(setMonthFilter, e.target.value)}
-          >
-            <option value="All">All Months</option>
-            <option value="1">January</option>
-            <option value="2">February</option>
-            <option value="3">March</option>
-            <option value="4">April</option>
-            <option value="5">May</option>
-            <option value="6">June</option>
-            <option value="7">July</option>
-            <option value="8">August</option>
-            <option value="9">September</option>
-            <option value="10">October</option>
-            <option value="11">November</option>
-            <option value="12">December</option>
-          </select>
+              <div className="control-spacer" />
 
-          <select
-            value={yearFilter}
-            onChange={(e) => handleFilterChange(setYearFilter, e.target.value)}
-          >
-            <option value="All">All Years</option>
-            {availableYears.map((year) => (
-              <option key={year} value={year}>
-                {year}
-              </option>
-            ))}
-          </select>
 
-          {isFiltered && (
-            <button
-              type="button"
-              className="btn-reset"
-              onClick={resetFilters}
-              title="Reset all filters"
-            >
-              Reset Filters
-            </button>
-          )}
-        </div>
+              {/* REFRESH */}
 
-        <div className="toolbar-actions">
-          <button
-            type="button"
-            className="btn-action btn-refresh"
-            onClick={fetchLogs}
-            disabled={loading}
-            title="Refresh logs"
-          >
-            <svg
-              className={`btn-icon ${loading ? "spin" : ""}`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-              />
-            </svg>
-            Refresh
-          </button>
+              <button
+                type="button"
+                className="action-button"
+                onClick={
+                  fetchLogs
+                }
+                disabled={
+                  loading
+                }
+              >
+                {loading
+                  ? "Loading"
+                  : "Refresh"}
+              </button>
 
-          <button
-            type="button"
-            className="btn-action btn-excel"
-            onClick={exportExcel}
-            title="Export data to Excel"
-          >
-            <svg
-              className="btn-icon"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-              />
-            </svg>
-            Excel
-          </button>
 
-          <button
-            type="button"
-            className="btn-action btn-pdf"
-            onClick={exportPDF}
-            title="Export data to PDF report"
-          >
-            <svg
-              className="btn-icon"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
-              />
-            </svg>
-            PDF
-          </button>
-        </div>
-      </div>
+              {/* EXCEL */}
 
-      {/* ===========================
-            LOGS TABLE METADATA
-      =========================== */}
-      <div className="table-header-info">
-        <span>
-          Showing <strong>{currentTableData.length}</strong> of{" "}
-          <strong>{analytics.filteredTotal}</strong> records (Page {currentPage}{" "}
-          of {totalPages})
-        </span>
-      </div>
+              <button
+                type="button"
+                className="export-button excel"
+                onClick={
+                  exportExcel
+                }
+              >
+                Excel
+              </button>
 
-      {/* ===========================
-            LOGS TABLE
-      =========================== */}
-      <div className="table-container">
-        <table>
-          <thead>
-            <tr>
-              <th>Student Name</th>
-              <th>Grade</th>
-              <th>Date</th>
-              <th>Session In</th>
-              <th>Session Out</th>
-            </tr>
-          </thead>
 
-          <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan="5" className="table-status-cell">
-                  Loading records...
-                </td>
-              </tr>
-            ) : currentTableData.length === 0 ? (
-              <tr>
-                <td colSpan="5" className="table-status-cell">
-                  No records match the selected filters.
-                </td>
-              </tr>
-            ) : (
-              currentTableData.map((log) => {
-                const sessionInTime = log.session_in || log.created_at;
-                const sessionOutTime = log.session_out;
+              {/* PDF */}
 
-                return (
-                  <tr key={log.id}>
-                    <td className="student-name">
-                      {log.fullname ? log.fullname.toUpperCase() : "N/A"}
-                    </td>
-                    <td>
-                      <span className="badge-grade">
-                        {log.grade ? log.grade.toUpperCase() : "N/A"}
-                      </span>
-                    </td>
-                    <td>{formatDate(sessionInTime)}</td>
-                    <td>{formatTime(sessionInTime)}</td>
-                    <td>{formatTime(sessionOutTime)}</td>
+              <button
+                type="button"
+                className="export-button pdf"
+                onClick={
+                  exportPDF
+                }
+              >
+                PDF
+              </button>
+
+            </div>
+
+
+            {/* RECORDS TABLE */}
+
+            <div className="records-table">
+
+              <table>
+
+                <thead>
+
+                  <tr>
+
+                    <th className="number-column">
+                      #
+                    </th>
+
+                    <th>
+                      Student Name
+                    </th>
+
+                    <th>
+                      Grade
+                    </th>
+
+                    <th>
+                      Date
+                    </th>
+
+                    <th>
+                      Session In
+                    </th>
+
+                    <th>
+                      Session Out
+                    </th>
+
                   </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
 
-      {/* ===========================
-            PAGINATION CONTROLS (20 per page)
-      =========================== */}
-      {filteredLogs.length > itemsPerPage && (
-        <div className="pagination-wrapper">
-          <button
-            className="pagination-btn"
-            disabled={currentPage === 1}
-            onClick={() => handlePageChange(currentPage - 1)}
-          >
-            &laquo; Previous
-          </button>
+                </thead>
 
-          <div className="pagination-numbers">
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-              (pageNum) => (
+
+                <tbody>
+
+                  {loading ? (
+
+                    <tr>
+
+                      <td
+                        colSpan="6"
+                        className="empty-row"
+                      >
+                        Loading records...
+                      </td>
+
+                    </tr>
+
+                  ) : currentTableData.length ===
+                    0 ? (
+
+                    <tr>
+
+                      <td
+                        colSpan="6"
+                        className="empty-row"
+                      >
+                        No records found.
+                      </td>
+
+                    </tr>
+
+                  ) : (
+
+                    currentTableData.map(
+                      (
+                        log,
+                        index
+                      ) => {
+
+                        const sessionIn =
+                          log.session_in ||
+                          log.created_at;
+
+                        return (
+
+                          <tr
+                            key={
+                              log.id
+                            }
+                          >
+
+                            <td className="number-column">
+
+                              {(currentPage -
+                                1) *
+                                itemsPerPage +
+                                index +
+                                1}
+
+                            </td>
+
+
+                            <td className="name-cell">
+
+                              {log.fullname
+                                ? log.fullname.toUpperCase()
+                                : "N/A"}
+
+                            </td>
+
+
+                            <td>
+
+                              <span className="grade-label">
+
+                                {log.grade
+                                  ? log.grade.toUpperCase()
+                                  : "N/A"}
+
+                              </span>
+
+                            </td>
+
+
+                            <td>
+
+                              {formatDate(
+                                sessionIn
+                              )}
+
+                            </td>
+
+
+                            <td className="time-cell">
+
+                              {formatTime(
+                                sessionIn
+                              )}
+
+                            </td>
+
+
+                            <td className="time-cell">
+
+                              {formatTime(
+                                log.session_out
+                              )}
+
+                            </td>
+
+                          </tr>
+
+                        );
+                      }
+                    )
+
+                  )}
+
+                </tbody>
+
+              </table>
+
+            </div>
+
+
+            {/* PAGINATION */}
+
+            <div className="table-footer">
+
+              <div className="pagination">
+
                 <button
-                  key={pageNum}
-                  className={`pagination-number ${
-                    currentPage === pageNum ? "active" : ""
-                  }`}
-                  onClick={() => handlePageChange(pageNum)}
+                  type="button"
+                  disabled={
+                    currentPage ===
+                    1
+                  }
+                  onClick={() =>
+                    changePage(
+                      currentPage -
+                        1
+                    )
+                  }
                 >
-                  {pageNum}
+                  Previous
                 </button>
-              )
-            )}
-          </div>
 
-          <button
-            className="pagination-btn"
-            disabled={currentPage === totalPages}
-            onClick={() => handlePageChange(currentPage + 1)}
-          >
-            Next &raquo;
-          </button>
-        </div>
-      )}
+
+                {Array.from(
+                  {
+                    length:
+                      totalPages,
+                  },
+                  (
+                    _,
+                    index
+                  ) =>
+                    index + 1
+                )
+                  .slice(
+                    Math.max(
+                      0,
+                      currentPage -
+                        3
+                    ),
+                    Math.min(
+                      totalPages,
+                      currentPage +
+                        2
+                    )
+                  )
+                  .map(
+                    (page) => (
+
+                      <button
+                        key={
+                          page
+                        }
+                        type="button"
+                        className={
+                          currentPage ===
+                          page
+                            ? "active"
+                            : ""
+                        }
+                        onClick={() =>
+                          changePage(
+                            page
+                          )
+                        }
+                      >
+                        {
+                          page
+                        }
+                      </button>
+
+                    )
+                  )}
+
+
+                <button
+                  type="button"
+                  disabled={
+                    currentPage ===
+                    totalPages
+                  }
+                  onClick={() =>
+                    changePage(
+                      currentPage +
+                        1
+                    )
+                  }
+                >
+                  Next
+                </button>
+
+              </div>
+
+
+              <div className="footer-results">
+
+                Results{" "}
+
+                <strong>
+                  {filteredLogs.length ===
+                  0
+                    ? 0
+                    : (currentPage -
+                        1) *
+                        itemsPerPage +
+                      1}
+                </strong>
+
+                {" - "}
+
+                <strong>
+                  {Math.min(
+                    currentPage *
+                      itemsPerPage,
+                    filteredLogs.length
+                  )}
+                </strong>
+
+                {" of "}
+
+                <strong>
+                  {
+                    filteredLogs.length
+                  }
+                </strong>
+
+              </div>
+
+            </div>
+
+          </>
+        )}
+
+
+        {/* ====================================
+            USAGE / PURPOSE
+        ==================================== */}
+
+        {activePage ===
+          "usage" && (
+          <div className="embedded-page">
+            <Purpose />
+          </div>
+        )}
+
+
+        {/* ====================================
+            LIBRARY CARD LOST REQUEST
+        ==================================== */}
+
+        {activePage ===
+          "library-card-lost" && (
+          <div className="embedded-page">
+            <LibraryCardLostRequest />
+          </div>
+        )}
+
+
+        {/* ====================================
+            USAGE DATA
+        ==================================== */}
+
+        {activePage ===
+          "usage-data" && (
+          <div className="embedded-page">
+            <UsageData />
+          </div>
+        )}
+
+
+        {/* ====================================
+            RECORD DATA
+        ==================================== */}
+
+        {activePage ===
+          "records-data" && (
+          <div className="embedded-page">
+            <RecordsData />
+          </div>
+        )}
+
+      </main>
+
     </div>
   );
 }
