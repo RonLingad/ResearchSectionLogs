@@ -17,6 +17,53 @@ import RecordsData from "./RecordsData";
 const ADMIN_USERNAME = "libraryadmin";
 const ADMIN_PASSWORD = "imcpassword";
 
+// ==========================================
+// NAME CLEANER
+// ==========================================
+//
+// Removes special characters from names
+// and automatically converts them to uppercase.
+//
+// Example:
+// "Juan, Dela-Cruz." -> "JUAN DELACRUZ"
+// "Juan 'Dela' Cruz" -> "JUAN DELA CRUZ"
+//
+
+function cleanName(value) {
+  if (!value) return "N/A";
+
+  return String(value)
+    // Convert special characters to spaces
+    .replace(/[.,;:'"`!?()[\]{}<>/\\|@#$%^&*_+=~`-]/g, " ")
+
+    // Keep letters and numbers
+    .replace(/[^\p{L}\p{N}\s]/gu, "")
+
+    // Remove extra spaces
+    .replace(/\s+/g, " ")
+
+    // Remove spaces at beginning/end
+    .trim()
+
+    // Convert to uppercase
+    .toUpperCase();
+}
+
+// ==========================================
+// CLEAN GRADE
+// ==========================================
+
+function cleanGrade(value) {
+  if (!value) return "N/A";
+
+  return String(value)
+    .replace(/[.,;:'"`!?()[\]{}<>/\\|@#$%^&*_+=~`-]/g, " ")
+    .replace(/[^\p{L}\p{N}\s]/gu, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toUpperCase();
+}
+
 export default function AdminControl() {
   // ==========================================
   // LOGIN
@@ -68,7 +115,8 @@ export default function AdminControl() {
   // ACTIVE SECTION
   // ==========================================
 
-  const [activePage, setActivePage] = useState("records");
+  const [activePage, setActivePage] =
+    useState("records");
 
   // ==========================================
   // DATA
@@ -82,15 +130,19 @@ export default function AdminControl() {
   // ==========================================
 
   const [search, setSearch] = useState("");
-  const [gradeFilter, setGradeFilter] = useState("All");
-  const [monthFilter, setMonthFilter] = useState("All");
-  const [yearFilter, setYearFilter] = useState("All");
+  const [gradeFilter, setGradeFilter] =
+    useState("All");
+  const [monthFilter, setMonthFilter] =
+    useState("All");
+  const [yearFilter, setYearFilter] =
+    useState("All");
 
   // ==========================================
   // PAGINATION
   // ==========================================
 
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] =
+    useState(1);
 
   const itemsPerPage = 15;
 
@@ -157,11 +209,15 @@ export default function AdminControl() {
 
   const filteredLogs = useMemo(() => {
     return logs.filter((log) => {
+      // CLEAN NAME BEFORE SEARCH
       const studentName =
-        log.fullname?.toLowerCase() || "";
+        cleanName(log.fullname)
+          .toLowerCase();
 
       const searchText =
-        search.toLowerCase().trim();
+        search
+          .toLowerCase()
+          .trim();
 
       const matchesSearch =
         studentName.includes(searchText);
@@ -179,7 +235,8 @@ export default function AdminControl() {
       let matchesYear = true;
 
       if (dateValue) {
-        const date = new Date(dateValue);
+        const date =
+          new Date(dateValue);
 
         const month =
           date.getMonth() + 1;
@@ -189,12 +246,14 @@ export default function AdminControl() {
 
         if (monthFilter !== "All") {
           matchesMonth =
-            month === Number(monthFilter);
+            month ===
+            Number(monthFilter);
         }
 
         if (yearFilter !== "All") {
           matchesYear =
-            year === Number(yearFilter);
+            year ===
+            Number(yearFilter);
         }
       }
 
@@ -223,19 +282,20 @@ export default function AdminControl() {
         itemsPerPage
     ) || 1;
 
-  const currentTableData = useMemo(() => {
-    const start =
-      (currentPage - 1) *
-      itemsPerPage;
+  const currentTableData =
+    useMemo(() => {
+      const start =
+        (currentPage - 1) *
+        itemsPerPage;
 
-    return filteredLogs.slice(
-      start,
-      start + itemsPerPage
-    );
-  }, [
-    filteredLogs,
-    currentPage,
-  ]);
+      return filteredLogs.slice(
+        start,
+        start + itemsPerPage
+      );
+    }, [
+      filteredLogs,
+      currentPage,
+    ]);
 
   function changePage(page) {
     if (
@@ -250,7 +310,10 @@ export default function AdminControl() {
   // FILTER HANDLER
   // ==========================================
 
-  function updateFilter(setter, value) {
+  function updateFilter(
+    setter,
+    value
+  ) {
     setter(value);
     setCurrentPage(1);
   }
@@ -319,8 +382,11 @@ export default function AdminControl() {
     ).forEach(
       ([hour, count]) => {
         if (count > peakCount) {
-          peakHour = Number(hour);
-          peakCount = count;
+          peakHour =
+            Number(hour);
+
+          peakCount =
+            count;
         }
       }
     );
@@ -430,12 +496,14 @@ export default function AdminControl() {
 
           return {
             "Student Name":
-              log.fullname ||
-              "N/A",
+              cleanName(
+                log.fullname
+              ),
 
             Grade:
-              log.grade ||
-              "N/A",
+              cleanGrade(
+                log.grade
+              ),
 
             Date:
               formatDate(
@@ -490,7 +558,8 @@ export default function AdminControl() {
       return;
     }
 
-    const doc = new jsPDF();
+    const doc =
+      new jsPDF();
 
     doc.setFontSize(16);
 
@@ -537,14 +606,25 @@ export default function AdminControl() {
 
           return [
             index + 1,
-            log.fullname || "-",
-            log.grade || "-",
+
+            // CLEAN NAME
+            cleanName(
+              log.fullname
+            ),
+
+            // CLEAN GRADE
+            cleanGrade(
+              log.grade
+            ),
+
             formatDate(
               sessionIn
             ),
+
             formatTime(
               sessionIn
             ),
+
             formatTime(
               log.session_out
             ),
@@ -573,10 +653,16 @@ export default function AdminControl() {
       styles: {
         fontSize: 9,
         cellPadding: 3,
+        textColor: [0, 0, 0],
       },
 
       headStyles: {
         fontSize: 9,
+        textColor: [255, 255, 255],
+      },
+
+      bodyStyles: {
+        textColor: [0, 0, 0],
       },
     });
 
@@ -621,8 +707,6 @@ export default function AdminControl() {
             onSubmit={handleLogin}
           >
 
-            {/* USERNAME */}
-
             <div className="admin-login-field">
 
               <label>
@@ -643,9 +727,6 @@ export default function AdminControl() {
               />
 
             </div>
-
-
-            {/* PASSWORD */}
 
             <div className="admin-login-field">
 
@@ -668,17 +749,11 @@ export default function AdminControl() {
 
             </div>
 
-
-            {/* ERROR */}
-
             {loginError && (
               <div className="admin-login-error">
                 {loginError}
               </div>
             )}
-
-
-            {/* LOGIN */}
 
             <button
               type="submit"
@@ -702,13 +777,9 @@ export default function AdminControl() {
   return (
     <div className="admin-panel">
 
-      {/* ======================================
-          SIDEBAR
-      ====================================== */}
+      {/* SIDEBAR */}
 
       <aside className="admin-sidebar">
-
-        {/* BRAND */}
 
         <div className="sidebar-brand">
 
@@ -722,28 +793,24 @@ export default function AdminControl() {
 
         </div>
 
-          {/* PEAK */}
+        <div className="side-peak">
 
-          <div className="side-peak">
+          <span>
+            Peak Usage
+          </span>
 
-            <span>
-              Peak Usage
-            </span>
+          <strong>
+            {analytics.peakText}
+          </strong>
 
-            <strong>
-              {analytics.peakText}
-            </strong>
+          <small>
+            {analytics.peakCount} records
+          </small>
 
-            <small>
-              {analytics.peakCount} records
-            </small>
-
-          </div>
+        </div>
 
         <div className="sidebar-menu">
 
-          {/* RECORDS */}
-          
           <button
             type="button"
             className={menuClass(
@@ -757,9 +824,6 @@ export default function AdminControl() {
           >
             Records
           </button>
-
-
-          {/* RECORD DATA */}
 
           <button
             type="button"
@@ -775,9 +839,6 @@ export default function AdminControl() {
             Record Data
           </button>
 
-
-          {/* USAGE */}
-
           <button
             type="button"
             className={menuClass(
@@ -792,9 +853,6 @@ export default function AdminControl() {
             Usage
           </button>
 
-
-          {/* USAGE DATA */}
-
           <button
             type="button"
             className={menuClass(
@@ -808,9 +866,6 @@ export default function AdminControl() {
           >
             Usage Data
           </button>
-
-
-          {/* LIBRARY CARD LOST REQUEST */}
 
           <button
             type="button"
@@ -828,19 +883,13 @@ export default function AdminControl() {
 
         </div>
 
-
-        {/* ====================================
-            ANALYTICS
-        ==================================== */}
+        {/* ANALYTICS */}
 
         <div className="sidebar-analytics">
 
           <div className="menu-title">
             ANALYTICS
           </div>
-
-
-          {/* TOTAL */}
 
           <div className="side-stat">
 
@@ -854,9 +903,6 @@ export default function AdminControl() {
 
           </div>
 
-
-          {/* TODAY */}
-
           <div className="side-stat">
 
             <span>
@@ -868,9 +914,6 @@ export default function AdminControl() {
             </strong>
 
           </div>
-
-
-          {/* THIS MONTH */}
 
           <div className="side-stat">
 
@@ -884,9 +927,6 @@ export default function AdminControl() {
 
           </div>
 
-
-          {/* SHOWING */}
-
           <div className="side-stat">
 
             <span>
@@ -899,15 +939,9 @@ export default function AdminControl() {
 
           </div>
 
-
-
-
         </div>
 
-
-        {/* ====================================
-            LOGOUT
-        ==================================== */}
+        {/* LOGOUT */}
 
         <div className="sidebar-logout">
 
@@ -923,17 +957,11 @@ export default function AdminControl() {
 
       </aside>
 
-
-      {/* ======================================
-          MAIN CONTENT
-      ====================================== */}
+      {/* MAIN CONTENT */}
 
       <main className="admin-content">
 
-
-        {/* ====================================
-            RECORDS
-        ==================================== */}
+        {/* RECORDS */}
 
         {activePage ===
           "records" && (
@@ -955,7 +983,6 @@ export default function AdminControl() {
 
               </div>
 
-
               <div className="result-count">
 
                 Results{" "}
@@ -969,7 +996,6 @@ export default function AdminControl() {
               </div>
 
             </div>
-
 
             {/* FILTER BAR */}
 
@@ -999,7 +1025,6 @@ export default function AdminControl() {
                 </button>
 
               </div>
-
 
               {/* GRADE */}
 
@@ -1050,7 +1075,6 @@ export default function AdminControl() {
                 </option>
 
               </select>
-
 
               {/* MONTH */}
 
@@ -1118,7 +1142,6 @@ export default function AdminControl() {
 
               </select>
 
-
               {/* YEAR */}
 
               <select
@@ -1148,7 +1171,6 @@ export default function AdminControl() {
 
               </select>
 
-
               {/* RESET */}
 
               <button
@@ -1161,9 +1183,7 @@ export default function AdminControl() {
                 Reset
               </button>
 
-
               <div className="control-spacer" />
-
 
               {/* REFRESH */}
 
@@ -1182,7 +1202,6 @@ export default function AdminControl() {
                   : "Refresh"}
               </button>
 
-
               {/* EXCEL */}
 
               <button
@@ -1194,7 +1213,6 @@ export default function AdminControl() {
               >
                 Excel
               </button>
-
 
               {/* PDF */}
 
@@ -1209,7 +1227,6 @@ export default function AdminControl() {
               </button>
 
             </div>
-
 
             {/* RECORDS TABLE */}
 
@@ -1248,7 +1265,6 @@ export default function AdminControl() {
                   </tr>
 
                 </thead>
-
 
                 <tbody>
 
@@ -1309,28 +1325,39 @@ export default function AdminControl() {
 
                             </td>
 
+                            {/* CLEANED NAME */}
 
-                            <td className="name-cell">
+                            <td
+                              className="name-cell"
+                              style={{
+                                color:
+                                  "#000000",
+                                textTransform:
+                                  "uppercase",
+                                fontWeight:
+                                  "500",
+                              }}
+                            >
 
-                              {log.fullname
-                                ? log.fullname.toUpperCase()
-                                : "N/A"}
+                              {cleanName(
+                                log.fullname
+                              )}
 
                             </td>
 
+                            {/* GRADE */}
 
                             <td>
 
                               <span className="grade-label">
 
-                                {log.grade
-                                  ? log.grade.toUpperCase()
-                                  : "N/A"}
+                                {cleanGrade(
+                                  log.grade
+                                )}
 
                               </span>
 
                             </td>
-
 
                             <td>
 
@@ -1340,7 +1367,6 @@ export default function AdminControl() {
 
                             </td>
 
-
                             <td className="time-cell">
 
                               {formatTime(
@@ -1348,7 +1374,6 @@ export default function AdminControl() {
                               )}
 
                             </td>
-
 
                             <td className="time-cell">
 
@@ -1372,7 +1397,6 @@ export default function AdminControl() {
 
             </div>
 
-
             {/* PAGINATION */}
 
             <div className="table-footer">
@@ -1394,7 +1418,6 @@ export default function AdminControl() {
                 >
                   Previous
                 </button>
-
 
                 {Array.from(
                   {
@@ -1447,7 +1470,6 @@ export default function AdminControl() {
                     )
                   )}
 
-
                 <button
                   type="button"
                   disabled={
@@ -1465,7 +1487,6 @@ export default function AdminControl() {
                 </button>
 
               </div>
-
 
               <div className="footer-results">
 
@@ -1506,10 +1527,7 @@ export default function AdminControl() {
           </>
         )}
 
-
-        {/* ====================================
-            USAGE / PURPOSE
-        ==================================== */}
+        {/* USAGE */}
 
         {activePage ===
           "usage" && (
@@ -1518,10 +1536,7 @@ export default function AdminControl() {
           </div>
         )}
 
-
-        {/* ====================================
-            LIBRARY CARD LOST REQUEST
-        ==================================== */}
+        {/* LIBRARY CARD LOST */}
 
         {activePage ===
           "library-card-lost" && (
@@ -1530,10 +1545,7 @@ export default function AdminControl() {
           </div>
         )}
 
-
-        {/* ====================================
-            USAGE DATA
-        ==================================== */}
+        {/* USAGE DATA */}
 
         {activePage ===
           "usage-data" && (
@@ -1542,10 +1554,7 @@ export default function AdminControl() {
           </div>
         )}
 
-
-        {/* ====================================
-            RECORD DATA
-        ==================================== */}
+        {/* RECORD DATA */}
 
         {activePage ===
           "records-data" && (
