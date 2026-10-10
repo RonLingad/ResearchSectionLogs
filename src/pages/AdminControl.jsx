@@ -10,24 +10,10 @@ import LibraryCardLostRequest from "./LibraryCardLostRequest";
 import UsageData from "./UsageData";
 import RecordsData from "./RecordsData";
 
-// ==========================================
-// PREDEFINED ADMIN LOGIN
-// ==========================================
 
 const ADMIN_USERNAME = "libraryadmin";
 const ADMIN_PASSWORD = "imcpassword";
 
-// ==========================================
-// NAME CLEANER
-// ==========================================
-//
-// Removes special characters from names
-// and automatically converts them to uppercase.
-//
-// Example:
-// "Juan, Dela-Cruz." -> "JUAN DELACRUZ"
-// "Juan 'Dela' Cruz" -> "JUAN DELA CRUZ"
-//
 
 function cleanName(value) {
   if (!value) return "N/A";
@@ -65,9 +51,7 @@ function cleanGrade(value) {
 }
 
 export default function AdminControl() {
-  // ==========================================
-  // LOGIN
-  // ==========================================
+
 
   const [isLoggedIn, setIsLoggedIn] = useState(
     sessionStorage.getItem("libraryAdminLoggedIn") === "true"
