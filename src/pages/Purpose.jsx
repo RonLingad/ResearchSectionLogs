@@ -1,4 +1,3 @@
-
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "../lib/supabase";
 import * as XLSX from "xlsx";
@@ -64,10 +63,7 @@ const MONTHS = [
 
 const ITEMS_PER_PAGE = 15;
 
-/* =========================================================
-   CHART VALUE LABEL PLUGIN
-   ========================================================= */
-
+/* CHART VALUE LABEL PLUGIN */
 const barValuePlugin = {
   id: "usageBarValueLabels",
 
@@ -101,12 +97,7 @@ const barValuePlugin = {
   },
 };
 
-/* =========================================================
-   CLEAN NAME
-   Removes numbers and special characters and converts to
-   uppercase. Example: "Juan D. Cruz123" -> "JUAN D CRUZ"
-   ========================================================= */
-
+/* CLEAN NAME */
 const cleanName = (name) => {
   if (!name) return "";
 
@@ -120,10 +111,7 @@ const cleanName = (name) => {
     .toUpperCase();
 };
 
-/* =========================================================
-   DATE PARSER
-   ========================================================= */
-
+/* DATE PARSER */
 const parseDate = (value) => {
   if (!value) return null;
 
@@ -132,10 +120,7 @@ const parseDate = (value) => {
   return Number.isNaN(date.getTime()) ? null : date;
 };
 
-/* =========================================================
-   MONTH NAME
-   ========================================================= */
-
+/* MONTH NAME */
 const getMonthName = (monthNumber) => {
   const month = MONTHS.find(
     (item) => item.value === Number(monthNumber)
@@ -144,10 +129,7 @@ const getMonthName = (monthNumber) => {
   return month ? month.label : "";
 };
 
-/* =========================================================
-   PURPOSE LIST
-   ========================================================= */
-
+/* PURPOSE LIST */
 const getPurposeList = (purposes) => {
   if (!purposes) return [];
 
@@ -167,10 +149,7 @@ const getPurposeList = (purposes) => {
   return [];
 };
 
-/* =========================================================
-   MATCH PURPOSE
-   ========================================================= */
-
+/* MATCH PURPOSE */
 const getMatchedPurpose = (purpose) => {
   const cleanPurpose = String(purpose || "").trim();
 
@@ -182,14 +161,12 @@ const getMatchedPurpose = (purpose) => {
   return matched || "Others";
 };
 
-/* =========================================================
-   DATE / TIME FORMAT
-   ========================================================= */
-
+/* DATE / TIME FORMAT */
 const formatDateTime = (value) => {
   if (!value) return "—";
 
   const date = parseDate(value);
+
   if (!date) return "—";
 
   return date.toLocaleString("en-US", {
@@ -206,10 +183,7 @@ const formatDateTimeForPDF = (value) => {
   return formatDateTime(value);
 };
 
-/* =========================================================
-   ANALYTICS
-   ========================================================= */
-
+/* ANALYTICS */
 const calculateAnalytics = (logs) => {
   const counts = {};
 
@@ -258,10 +232,7 @@ const calculateAnalytics = (logs) => {
   };
 };
 
-/* =========================================================
-   COMPONENT
-   ========================================================= */
-
+/* COMPONENT */
 export default function Purpose() {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -273,10 +244,7 @@ export default function Purpose() {
 
   const chartRef = useRef(null);
 
-  /* =======================================================
-     FETCH DATA
-     ======================================================= */
-
+  /* FETCH DATA */
   const fetchLogs = async () => {
     try {
       setLoading(true);
@@ -305,10 +273,7 @@ export default function Purpose() {
     fetchLogs();
   }, []);
 
-  /* =======================================================
-     FILTERED LOGS
-     ======================================================= */
-
+  /* FILTERED LOGS */
   const filteredLogs = useMemo(() => {
     return logs.filter((log) => {
       const date = parseDate(log.session_in);
@@ -330,10 +295,7 @@ export default function Purpose() {
     });
   }, [logs, selectedMonth, selectedYear]);
 
-  /* =======================================================
-     ANALYTICS
-     ======================================================= */
-
+  /* ANALYTICS */
   const analytics = useMemo(
     () => calculateAnalytics(filteredLogs),
     [filteredLogs]
@@ -353,10 +315,7 @@ export default function Purpose() {
       ? usedBreakdown[usedBreakdown.length - 1]
       : null;
 
-  /* =======================================================
-     PERIOD LABEL
-     ======================================================= */
-
+  /* PERIOD LABEL */
   const periodLabel = useMemo(() => {
     if (selectedMonth === "all" && selectedYear === "all") {
       return "All Months and Years";
@@ -373,10 +332,7 @@ export default function Purpose() {
     return String(selectedYear);
   }, [selectedMonth, selectedYear]);
 
-  /* =======================================================
-     CONCLUSION
-     ======================================================= */
-
+  /* CONCLUSION */
   const summaryText = useMemo(() => {
     if (usedBreakdown.length === 0) {
       return `The data shows no recorded internet or computer usage for ${periodLabel}.`;
@@ -405,10 +361,7 @@ export default function Purpose() {
     return `${mostUsedText}. Overall, the purposes were ranked from most to least visited as follows: ${rankingText}. ${endingText}. This indicates the primary pattern of computer and internet usage among the registered users for ${periodLabel}.`;
   }, [usedBreakdown, highestPurpose, lowestPurpose, periodLabel]);
 
-  /* =======================================================
-     PAGINATION
-     ======================================================= */
-
+  /* PAGINATION */
   const totalPages = Math.max(
     1,
     Math.ceil(filteredLogs.length / ITEMS_PER_PAGE)
@@ -455,10 +408,7 @@ export default function Purpose() {
     return pages;
   }, [safeCurrentPage, totalPages]);
 
-  /* =======================================================
-     CHART DATA
-     ======================================================= */
-
+  /* CHART DATA */
   const chartData = useMemo(
     () => ({
       labels: breakdown.map((item) => item.name),
@@ -482,10 +432,7 @@ export default function Purpose() {
     [breakdown]
   );
 
-  /* =======================================================
-     CHART OPTIONS
-     ======================================================= */
-
+  /* CHART OPTIONS */
   const chartOptions = useMemo(
     () => ({
       indexAxis: "y",
@@ -547,10 +494,7 @@ export default function Purpose() {
     []
   );
 
-  /* =======================================================
-     EXCEL EXPORT
-     ======================================================= */
-
+  /* EXCEL EXPORT */
   const exportExcel = () => {
     try {
       setExcelExporting(true);
@@ -562,7 +506,9 @@ export default function Purpose() {
           No: index + 1,
           Name: cleanName(log.fullname) || "—",
           Purpose:
-            purposes.length > 0 ? purposes.join(", ") : "Others",
+            purposes.length > 0
+              ? purposes.join(", ")
+              : "Others",
           "Session In": formatDateTime(log.session_in),
           "Session Out": formatDateTime(log.session_out),
         };
@@ -597,10 +543,7 @@ export default function Purpose() {
     }
   };
 
-  /* =======================================================
-     PDF EXPORT
-     ======================================================= */
-
+  /* PDF EXPORT */
   const exportPDF = async () => {
     try {
       setExporting(true);
@@ -613,12 +556,8 @@ export default function Purpose() {
 
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
-      const margin = 14;
+      const margin = 12;
       const contentWidth = pageWidth - margin * 2;
-
-      /* =================================================
-         FOOTER
-         ================================================= */
 
       const addFooter = (pageNumber) => {
         pdf.setFont("helvetica", "normal");
@@ -633,51 +572,79 @@ export default function Purpose() {
         );
       };
 
-      /* =================================================
-         PAGE 1 HEADER
-         ================================================= */
-
+      // First page header only
       const headerHeight = 34;
 
-      pdf.setFillColor(11, 42, 74);
+      pdf.setFillColor(255, 255, 255);
       pdf.rect(0, 0, pageWidth, headerHeight, "F");
 
-      pdf.setTextColor(255, 255, 255);
+      pdf.setTextColor(0, 0, 0);
       pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(13);
-      pdf.text("Holy Family Academy Angeles City", margin, 9);
+      pdf.setFontSize(14);
 
-      pdf.setFontSize(10);
-      pdf.text("Grade School IMC", margin, 17);
+      pdf.text(
+        "Holy Family Academy",
+        pageWidth / 2,
+        9,
+        { align: "center" }
+      );
 
       pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(9);
-      pdf.text("Internet Usage Report", margin, 24);
+      pdf.setFontSize(10);
 
-      pdf.setFontSize(8);
-      pdf.text(periodLabel, margin, 30);
+      pdf.text("Angeles City", pageWidth / 2, 14, {
+        align: "center",
+      });
 
-      pdf.setTextColor(0, 0, 0);
-
-      let currentY = headerHeight + 7;
-
-      /* =================================================
-         GRAPH TITLE
-         ================================================= */
+      pdf.text("Grade School IMC", pageWidth / 2, 19, {
+        align: "center",
+      });
 
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(11);
+
+      pdf.text(
+        "Internet Usage Report",
+        pageWidth / 2,
+        25,
+        { align: "center" }
+      );
+
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(9);
+
+      pdf.text(periodLabel, pageWidth / 2, 30, {
+        align: "center",
+      });
+
+      pdf.setDrawColor(180, 180, 180);
+      pdf.setLineWidth(0.3);
+
+      pdf.line(
+        margin,
+        headerHeight,
+        pageWidth - margin,
+        headerHeight
+      );
+
+      let currentY = headerHeight + 6;
+
+      // Purpose graph
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(12);
       pdf.setTextColor(0, 0, 0);
-      pdf.text("Purpose Breakdown", margin, currentY);
+
+      pdf.text(
+        "Purpose Breakdown",
+        pageWidth / 2,
+        currentY,
+        { align: "center" }
+      );
 
       currentY += 5;
 
-      /* =================================================
-         MANUAL PDF GRAPH
-         ================================================= */
-
       const graphWidth = contentWidth;
-      const graphHeight = 76;
+      const graphHeight = 95;
       const graphX = margin;
       const graphY = currentY;
 
@@ -687,7 +654,7 @@ export default function Purpose() {
       );
 
       const labelWidth = 43;
-      const valueWidth = 20;
+      const valueWidth = 15;
       const barAreaWidth =
         graphWidth - labelWidth - valueWidth;
 
@@ -699,12 +666,17 @@ export default function Purpose() {
           graphY + rowHeight * index + rowHeight / 2;
 
         pdf.setFont("helvetica", "normal");
-        pdf.setFontSize(11);
+        pdf.setFontSize(10);
         pdf.setTextColor(0, 0, 0);
-        pdf.text(item.name, graphX, centerY + 1.5);
+
+        pdf.text(
+          item.name,
+          graphX,
+          centerY + 1.5
+        );
 
         const barX = graphX + labelWidth;
-        const barHeight = 6;
+        const barHeight = 7;
         const barY = centerY - barHeight / 2;
 
         const barWidth =
@@ -713,17 +685,20 @@ export default function Purpose() {
             : 0;
 
         pdf.setFillColor(238, 242, 246);
+
         pdf.roundedRect(
           barX,
           barY,
           barAreaWidth,
           barHeight,
-          1.5,
-          1.5,
+          1,
+          1,
           "F"
         );
 
-        const hex = PURPOSE_COLORS[item.name];
+        const hex =
+          PURPOSE_COLORS[item.name] || "#6b7280";
+
         const red = parseInt(hex.substring(1, 3), 16);
         const green = parseInt(hex.substring(3, 5), 16);
         const blue = parseInt(hex.substring(5, 7), 16);
@@ -736,35 +711,65 @@ export default function Purpose() {
             barY,
             barWidth,
             barHeight,
-            1.5,
-            1.5,
+            1,
+            1,
             "F"
           );
         }
 
         pdf.setFont("helvetica", "bold");
-        pdf.setFontSize(11);
+        pdf.setFontSize(10);
         pdf.setTextColor(0, 0, 0);
 
-        const valueX = barX + barAreaWidth + 5;
-        pdf.text(String(item.count), valueX, centerY + 1.5);
+        pdf.text(
+          String(item.count),
+          barX + barAreaWidth + 4,
+          centerY + 1.5
+        );
       });
 
-      currentY += graphHeight + 7;
+      currentY += graphHeight + 3;
 
-      /* =================================================
-         CONCLUSION
-         ================================================= */
+      // Total visits below the graph
+      pdf.setDrawColor(190, 190, 190);
+      pdf.setLineWidth(0.25);
 
+      pdf.line(
+        margin,
+        currentY,
+        pageWidth - margin,
+        currentY
+      );
+
+      currentY += 7;
+
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(12);
+      pdf.setTextColor(0, 0, 0);
+
+      pdf.text("Total Visits", margin, currentY);
+
+      pdf.setFontSize(14);
+
+      pdf.text(
+        String(filteredLogs.length),
+        pageWidth - margin,
+        currentY,
+        { align: "right" }
+      );
+
+      currentY += 9;
+
+      // Conclusion with approximately double line spacing
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(11);
       pdf.setTextColor(0, 0, 0);
-      pdf.text("Conclusion", margin, currentY);
 
+      pdf.text("Conclusion", margin, currentY);
       currentY += 6;
 
       pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(12);
+      pdf.setFontSize(10);
       pdf.setTextColor(0, 0, 0);
 
       const conclusionLines = pdf.splitTextToSize(
@@ -772,110 +777,20 @@ export default function Purpose() {
         contentWidth
       );
 
-      const lineHeight = 6.35;
-      const availableConclusionHeight = 68;
-      const maxConclusionLines = Math.max(
-        1,
-        Math.floor(availableConclusionHeight / lineHeight)
-      );
+      const lineHeight = 7;
 
-      conclusionLines
-        .slice(0, maxConclusionLines)
-        .forEach((line) => {
-          pdf.text(line, margin, currentY);
-          currentY += lineHeight;
-        });
+      conclusionLines.forEach((line) => {
+        if (currentY + lineHeight > pageHeight - 15) {
+          pdf.addPage();
+          currentY = 15;
+        }
 
-      currentY += 1;
-
-      /* =================================================
-         PURPOSE BREAKDOWN TABLE
-         ================================================= */
-
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(11);
-      pdf.setTextColor(0, 0, 0);
-      pdf.text("Purpose Breakdown", margin, currentY);
-
-      currentY += 3;
-
-      const breakdownRows = breakdown.map((item, index) => [
-        index + 1,
-        item.name,
-        item.count,
-        `${item.percentage}%`,
-      ]);
-
-      autoTable(pdf, {
-        startY: currentY,
-        margin: {
-          left: margin,
-          right: margin,
-          bottom: 15,
-        },
-        tableWidth: contentWidth,
-        head: [["Rank", "Purpose", "Visits", "Percentage"]],
-        body: breakdownRows,
-        theme: "grid",
-        styles: {
-          font: "helvetica",
-          fontSize: 8.5,
-          textColor: [0, 0, 0],
-          lineColor: [197, 214, 230],
-          lineWidth: 0.2,
-          cellPadding: 2,
-          valign: "middle",
-        },
-        headStyles: {
-          fillColor: [11, 42, 74],
-          textColor: [255, 255, 255],
-          fontStyle: "bold",
-          fontSize: 8.5,
-        },
-        bodyStyles: {
-          textColor: [0, 0, 0],
-        },
-        columnStyles: {
-          0: { halign: "center", cellWidth: 17 },
-          1: { cellWidth: 83 },
-          2: { halign: "center", cellWidth: 35 },
-          3: { halign: "center", cellWidth: 40 },
-        },
-        didParseCell: (data) => {
-          if (data.section === "body") {
-            data.cell.styles.textColor = [0, 0, 0];
-          }
-        },
+        pdf.text(line, margin, currentY);
+        currentY += lineHeight;
       });
 
-      /* =================================================
-         REGISTERED LOGS - NEW PAGE
-         ================================================= */
-
+      // Registered usage logs start without a report header
       pdf.addPage();
-
-      const page2HeaderHeight = 31;
-
-      pdf.setFillColor(11, 42, 74);
-      pdf.rect(0, 0, pageWidth, page2HeaderHeight, "F");
-
-      pdf.setTextColor(255, 255, 255);
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(13);
-      pdf.text("Holy Family Academy Angeles City", margin, 9);
-
-      pdf.setFontSize(10);
-      pdf.text("Grade School IMC", margin, 17);
-
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(9);
-      pdf.text("Registered Usage Logs", margin, 24);
-
-      pdf.setTextColor(0, 0, 0);
-
-      /* =================================================
-         LOG TABLE
-         ================================================= */
 
       const logRows = filteredLogs.map((log, index) => {
         const purposes = getPurposeList(log.purposes);
@@ -883,28 +798,32 @@ export default function Purpose() {
         return [
           index + 1,
           cleanName(log.fullname) || "—",
-          purposes.length > 0 ? purposes.join(", ") : "Others",
+          purposes.length > 0
+            ? purposes.join(", ")
+            : "Others",
           formatDateTimeForPDF(log.session_in),
           formatDateTimeForPDF(log.session_out),
         ];
       });
 
       autoTable(pdf, {
-        startY: 38,
+        startY: 12,
         margin: {
           left: margin,
           right: margin,
-          top: 38,
+          top: 12,
           bottom: 15,
         },
         tableWidth: contentWidth,
-        head: [[
-          "No.",
-          "Name",
-          "Purpose",
-          "Session In",
-          "Session Out",
-        ]],
+        head: [
+          [
+            "No.",
+            "Name",
+            "Purpose",
+            "Session In",
+            "Session Out",
+          ],
+        ],
         body:
           logRows.length > 0
             ? logRows
@@ -915,27 +834,25 @@ export default function Purpose() {
           font: "helvetica",
           fontSize: 8,
           textColor: [0, 0, 0],
-          lineColor: [197, 214, 230],
+          lineColor: [190, 190, 190],
           lineWidth: 0.2,
-          cellPadding: 2.5,
+          cellPadding: 1.5,
           valign: "middle",
           overflow: "linebreak",
         },
         headStyles: {
-          fillColor: [11, 42, 74],
-          textColor: [255, 255, 255],
+          fillColor: [255, 255, 255],
+          textColor: [0, 0, 0],
           fontStyle: "bold",
           fontSize: 8,
+          lineColor: [150, 150, 150],
         },
         bodyStyles: {
           textColor: [0, 0, 0],
           fontStyle: "normal",
         },
         columnStyles: {
-          0: {
-            cellWidth: 10,
-            halign: "center",
-          },
+          0: { cellWidth: 10, halign: "center" },
           1: { cellWidth: 45 },
           2: { cellWidth: 48 },
           3: { cellWidth: 47 },
@@ -955,11 +872,7 @@ export default function Purpose() {
         },
       });
 
-      /* =================================================
-         PAGE NUMBERS
-         Add footer only after every PDF page exists.
-         ================================================= */
-
+      // Add page numbers to all pages
       const totalPdfPages = pdf.internal.getNumberOfPages();
 
       for (let page = 1; page <= totalPdfPages; page++) {
@@ -967,15 +880,8 @@ export default function Purpose() {
         addFooter(page);
       }
 
-      /* =================================================
-         SAVE PDF
-         ================================================= */
-
       pdf.save(
-        `Internet_Usage_Report_${periodLabel.replace(
-          /\s+/g,
-          "_"
-        )}.pdf`
+        `Internet_Usage_Report_${periodLabel.replace(/\s+/g, "_")}.pdf`
       );
     } catch (error) {
       console.error("PDF export error:", error);
@@ -983,10 +889,6 @@ export default function Purpose() {
       setExporting(false);
     }
   };
-
-  /* =======================================================
-     RENDER
-     ======================================================= */
 
   return (
     <div className="usage-content">
@@ -1029,18 +931,24 @@ export default function Purpose() {
       </div>
 
       {/* FILTER BAR */}
-
       <div className="usage-control-bar">
         <div className="usage-filter-group">
           <label htmlFor="usage-month">Month</label>
+
           <select
             id="usage-month"
             value={selectedMonth}
-            onChange={(event) => setSelectedMonth(event.target.value)}
+            onChange={(event) =>
+              setSelectedMonth(event.target.value)
+            }
           >
             <option value="all">All Months</option>
+
             {MONTHS.map((month) => (
-              <option key={month.value} value={month.value}>
+              <option
+                key={month.value}
+                value={month.value}
+              >
                 {month.label}
               </option>
             ))}
@@ -1049,12 +957,16 @@ export default function Purpose() {
 
         <div className="usage-filter-group">
           <label htmlFor="usage-year">Year</label>
+
           <select
             id="usage-year"
             value={selectedYear}
-            onChange={(event) => setSelectedYear(event.target.value)}
+            onChange={(event) =>
+              setSelectedYear(event.target.value)
+            }
           >
             <option value="all">All Years</option>
+
             {YEARS.map((year) => (
               <option key={year} value={year}>
                 {year}
@@ -1070,11 +982,12 @@ export default function Purpose() {
       </div>
 
       {/* STAT CARDS */}
-
       <div className="usage-summary-grid">
         <div className="usage-stat-card">
           <span className="usage-stat-label">Total Usage</span>
-          <span className="usage-stat-value">{analytics.total}</span>
+          <span className="usage-stat-value">
+            {analytics.total}
+          </span>
         </div>
 
         <div className="usage-stat-card">
@@ -1093,12 +1006,13 @@ export default function Purpose() {
 
         <div className="usage-stat-card">
           <span className="usage-stat-label">Sessions</span>
-          <span className="usage-stat-value">{analytics.sessions}</span>
+          <span className="usage-stat-value">
+            {analytics.sessions}
+          </span>
         </div>
       </div>
 
       {/* WEB GRAPH */}
-
       <section className="usage-section usage-chart-section">
         <div className="usage-section-header">
           <div>
@@ -1128,16 +1042,15 @@ export default function Purpose() {
       </section>
 
       {/* CONCLUSION */}
-
       <section className="usage-summary-box">
         <div className="usage-summary-box-header">
           <h2>Conclusion</h2>
         </div>
+
         <p>{summaryText}</p>
       </section>
 
       {/* PURPOSE BREAKDOWN */}
-
       <section className="usage-section">
         <div className="usage-section-header">
           <div>
@@ -1148,7 +1061,10 @@ export default function Purpose() {
 
         <div className="usage-breakdown-list">
           {breakdown.map((item, index) => (
-            <div className="usage-breakdown-item" key={item.name}>
+            <div
+              className="usage-breakdown-item"
+              key={item.name}
+            >
               <div className="usage-breakdown-rank">
                 #{index + 1}
               </div>
@@ -1165,8 +1081,10 @@ export default function Purpose() {
                   <span className="usage-breakdown-name">
                     {item.name}
                   </span>
+
                   <span className="usage-breakdown-count">
-                    {item.count} {item.count === 1 ? "visit" : "visits"}
+                    {item.count}{" "}
+                    {item.count === 1 ? "visit" : "visits"}
                   </span>
                 </div>
 
@@ -1190,12 +1108,13 @@ export default function Purpose() {
       </section>
 
       {/* REGISTERED LOGS */}
-
       <section className="usage-section">
         <div className="usage-section-header">
           <div>
             <h2>Registered Usage Logs</h2>
-            <p>Individual computer and internet usage records</p>
+            <p>
+              Individual computer and internet usage records
+            </p>
           </div>
 
           <span className="usage-record-count">
@@ -1219,13 +1138,19 @@ export default function Purpose() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="5" className="usage-table-message">
+                  <td
+                    colSpan="5"
+                    className="usage-table-message"
+                  >
                     Loading records...
                   </td>
                 </tr>
               ) : paginatedLogs.length === 0 ? (
                 <tr>
-                  <td colSpan="5" className="usage-table-message">
+                  <td
+                    colSpan="5"
+                    className="usage-table-message"
+                  >
                     No usage records found.
                   </td>
                 </tr>
@@ -1251,8 +1176,13 @@ export default function Purpose() {
                           : "Others"}
                       </td>
 
-                      <td>{formatDateTime(log.session_in)}</td>
-                      <td>{formatDateTime(log.session_out)}</td>
+                      <td>
+                        {formatDateTime(log.session_in)}
+                      </td>
+
+                      <td>
+                        {formatDateTime(log.session_out)}
+                      </td>
                     </tr>
                   );
                 })
@@ -1262,13 +1192,14 @@ export default function Purpose() {
         </div>
 
         {/* PAGINATION */}
-
         {!loading && filteredLogs.length > ITEMS_PER_PAGE && (
           <div className="usage-pagination">
             <button
               type="button"
               onClick={() =>
-                setCurrentPage((page) => Math.max(1, page - 1))
+                setCurrentPage((page) =>
+                  Math.max(1, page - 1)
+                )
               }
               disabled={safeCurrentPage === 1}
             >
@@ -1292,10 +1223,14 @@ export default function Purpose() {
               <button
                 type="button"
                 key={page}
-                className={safeCurrentPage === page ? "active" : ""}
+                className={
+                  safeCurrentPage === page ? "active" : ""
+                }
                 onClick={() => setCurrentPage(page)}
                 aria-current={
-                  safeCurrentPage === page ? "page" : undefined
+                  safeCurrentPage === page
+                    ? "page"
+                    : undefined
                 }
               >
                 {page}
