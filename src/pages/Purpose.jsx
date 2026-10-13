@@ -63,41 +63,10 @@ const MONTHS = [
 
 const ITEMS_PER_PAGE = 15;
 
-/* CHART VALUE LABEL PLUGIN */
-const barValuePlugin = {
-  id: "usageBarValueLabels",
+/* =====================================================
+   SHARED UTILITIES
+===================================================== */
 
-  afterDatasetsDraw(chart) {
-    const { ctx } = chart;
-    const dataset = chart.data.datasets[0];
-
-    if (!dataset) return;
-
-    const meta = chart.getDatasetMeta(0);
-
-    meta.data.forEach((bar, index) => {
-      const value = dataset.data[index];
-
-      if (
-        value === null ||
-        value === undefined ||
-        Number(value) === 0
-      ) {
-        return;
-      }
-
-      ctx.save();
-      ctx.fillStyle = "#000000";
-      ctx.font = "bold 11px Arial";
-      ctx.textAlign = "left";
-      ctx.textBaseline = "middle";
-      ctx.fillText(String(value), bar.x + 7, bar.y);
-      ctx.restore();
-    });
-  },
-};
-
-/* CLEAN NAME */
 const cleanName = (name) => {
   if (!name) return "";
 
@@ -111,7 +80,6 @@ const cleanName = (name) => {
     .toUpperCase();
 };
 
-/* DATE PARSER */
 const parseDate = (value) => {
   if (!value) return null;
 
@@ -120,7 +88,6 @@ const parseDate = (value) => {
   return Number.isNaN(date.getTime()) ? null : date;
 };
 
-/* MONTH NAME */
 const getMonthName = (monthNumber) => {
   const month = MONTHS.find(
     (item) => item.value === Number(monthNumber)
@@ -129,7 +96,6 @@ const getMonthName = (monthNumber) => {
   return month ? month.label : "";
 };
 
-/* PURPOSE LIST */
 const getPurposeList = (purposes) => {
   if (!purposes) return [];
 
@@ -149,7 +115,6 @@ const getPurposeList = (purposes) => {
   return [];
 };
 
-/* MATCH PURPOSE */
 const getMatchedPurpose = (purpose) => {
   const cleanPurpose = String(purpose || "").trim();
 
@@ -161,7 +126,6 @@ const getMatchedPurpose = (purpose) => {
   return matched || "Others";
 };
 
-/* DATE / TIME FORMAT */
 const formatDateTime = (value) => {
   if (!value) return "—";
 
@@ -179,11 +143,10 @@ const formatDateTime = (value) => {
   });
 };
 
-const formatDateTimeForPDF = (value) => {
-  return formatDateTime(value);
-};
+/* =====================================================
+   PURPOSE ANALYTICS
+===================================================== */
 
-/* ANALYTICS */
 const calculateAnalytics = (logs) => {
   const counts = {};
 
@@ -232,7 +195,47 @@ const calculateAnalytics = (logs) => {
   };
 };
 
-/* COMPONENT */
+/* =====================================================
+   CHART VALUE LABELS
+===================================================== */
+
+const barValuePlugin = {
+  id: "usageBarValueLabels",
+
+  afterDatasetsDraw(chart) {
+    const { ctx } = chart;
+    const dataset = chart.data.datasets[0];
+
+    if (!dataset) return;
+
+    const meta = chart.getDatasetMeta(0);
+
+    meta.data.forEach((bar, index) => {
+      const value = dataset.data[index];
+
+      if (
+        value === null ||
+        value === undefined ||
+        Number(value) === 0
+      ) {
+        return;
+      }
+
+      ctx.save();
+      ctx.fillStyle = "#000000";
+      ctx.font = "bold 11px Arial";
+      ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+      ctx.fillText(String(value), bar.x + 7, bar.y);
+      ctx.restore();
+    });
+  },
+};
+
+/* =====================================================
+   COMPONENT
+===================================================== */
+
 export default function Purpose() {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -244,7 +247,10 @@ export default function Purpose() {
 
   const chartRef = useRef(null);
 
-  /* FETCH DATA */
+  /* =====================================================
+     FETCH LOGS
+  ===================================================== */
+
   const fetchLogs = async () => {
     try {
       setLoading(true);
@@ -262,7 +268,7 @@ export default function Purpose() {
 
       setLogs(data || []);
     } catch (error) {
-      console.error("Unexpected error:", error);
+      console.error("Unexpected error fetching usage logs:", error);
       setLogs([]);
     } finally {
       setLoading(false);
@@ -273,7 +279,10 @@ export default function Purpose() {
     fetchLogs();
   }, []);
 
-  /* FILTERED LOGS */
+  /* =====================================================
+     FILTER LOGS
+  ===================================================== */
+
   const filteredLogs = useMemo(() => {
     return logs.filter((log) => {
       const date = parseDate(log.session_in);
@@ -295,7 +304,10 @@ export default function Purpose() {
     });
   }, [logs, selectedMonth, selectedYear]);
 
-  /* ANALYTICS */
+  /* =====================================================
+     ANALYTICS
+  ===================================================== */
+
   const analytics = useMemo(
     () => calculateAnalytics(filteredLogs),
     [filteredLogs]
@@ -315,7 +327,10 @@ export default function Purpose() {
       ? usedBreakdown[usedBreakdown.length - 1]
       : null;
 
-  /* PERIOD LABEL */
+  /* =====================================================
+     REPORTING PERIOD
+  ===================================================== */
+
   const periodLabel = useMemo(() => {
     if (selectedMonth === "all" && selectedYear === "all") {
       return "All Months and Years";
@@ -332,36 +347,57 @@ export default function Purpose() {
     return String(selectedYear);
   }, [selectedMonth, selectedYear]);
 
-  /* CONCLUSION */
+  /* =====================================================
+     CONCLUSION
+  ===================================================== */
+
   const summaryText = useMemo(() => {
     if (usedBreakdown.length === 0) {
-      return `The data shows no recorded internet or computer usage for ${periodLabel}.`;
+      return `No internet or computer usage records were found for ${periodLabel}. Therefore, no conclusion regarding the distribution of recorded purposes can be established for this reporting period.`;
     }
 
-    const rankedPurposes = usedBreakdown.map(
-      (item) =>
-        `${item.name} recorded ${item.count} ${
-          item.count === 1 ? "visit" : "visits"
-        } (${item.percentage}%)`
-    );
+    const highest = highestPurpose;
+    const lowest = lowestPurpose;
 
-    const rankingText = rankedPurposes.join(", followed by ");
+    const rankingText = usedBreakdown
+      .map(
+        (item) =>
+          `${item.name} (${item.count} ${
+            item.count === 1 ? "selection" : "selections"
+          }, ${item.percentage}%)`
+      )
+      .join("; ");
 
-    const mostUsedText =
-      `The data shows that ${highestPurpose.name} was the most visited purpose during ${periodLabel}, with ${highestPurpose.count} ${
-        highestPurpose.count === 1 ? "visit" : "visits"
-      }, representing ${highestPurpose.percentage}% of the recorded purpose selections`;
+    let conclusion =
+      `For ${periodLabel}, ${highest.name} was the most frequently recorded purpose, with ${highest.count} ${
+        highest.count === 1 ? "selection" : "selections"
+      }, representing ${highest.percentage}% of all recorded purpose selections. `;
 
-    const endingText = lowestPurpose
-      ? `while ${lowestPurpose.name} had the lowest recorded usage with ${lowestPurpose.count} ${
-          lowestPurpose.count === 1 ? "visit" : "visits"
-        } (${lowestPurpose.percentage}%)`
-      : "";
+    conclusion +=
+      `The distribution of recorded purposes, ranked from highest to lowest, was as follows: ${rankingText}. `;
 
-    return `${mostUsedText}. Overall, the purposes were ranked from most to least visited as follows: ${rankingText}. ${endingText}. This indicates the primary pattern of computer and internet usage among the registered users for ${periodLabel}.`;
-  }, [usedBreakdown, highestPurpose, lowestPurpose, periodLabel]);
+    if (lowest) {
+      conclusion +=
+        `${lowest.name} recorded the lowest usage, with ${lowest.count} ${
+          lowest.count === 1 ? "selection" : "selections"
+        } (${lowest.percentage}%). `;
+    }
 
-  /* PAGINATION */
+    conclusion +=
+      "These results describe the recorded purposes of internet and computer use during the specified reporting period.";
+
+    return conclusion;
+  }, [
+    usedBreakdown,
+    highestPurpose,
+    lowestPurpose,
+    periodLabel,
+  ]);
+
+  /* =====================================================
+     PAGINATION
+  ===================================================== */
+
   const totalPages = Math.max(
     1,
     Math.ceil(filteredLogs.length / ITEMS_PER_PAGE)
@@ -408,13 +444,16 @@ export default function Purpose() {
     return pages;
   }, [safeCurrentPage, totalPages]);
 
-  /* CHART DATA */
+  /* =====================================================
+     CHART DATA
+  ===================================================== */
+
   const chartData = useMemo(
     () => ({
       labels: breakdown.map((item) => item.name),
       datasets: [
         {
-          label: "Visits",
+          label: "Purpose Selections",
           data: breakdown.map((item) => item.count),
           backgroundColor: breakdown.map(
             (item) => PURPOSE_COLORS[item.name]
@@ -423,7 +462,7 @@ export default function Purpose() {
             (item) => PURPOSE_COLORS[item.name]
           ),
           borderWidth: 1,
-          borderRadius: 4,
+          borderRadius: 3,
           barThickness: 30,
           maxBarThickness: 34,
         },
@@ -432,7 +471,10 @@ export default function Purpose() {
     [breakdown]
   );
 
-  /* CHART OPTIONS */
+  /* =====================================================
+     CHART OPTIONS
+  ===================================================== */
+
   const chartOptions = useMemo(
     () => ({
       indexAxis: "y",
@@ -456,7 +498,10 @@ export default function Purpose() {
         },
         tooltip: {
           callbacks: {
-            label: (context) => ` ${context.raw} visits`,
+            label: (context) =>
+              ` ${context.raw} ${
+                context.raw === 1 ? "selection" : "selections"
+              }`,
           },
         },
       },
@@ -469,7 +514,7 @@ export default function Purpose() {
             color: "#000000",
             font: {
               size: 11,
-              weight: "600",
+              weight: "normal",
             },
           },
           grid: {
@@ -481,7 +526,7 @@ export default function Purpose() {
             color: "#000000",
             font: {
               size: 11,
-              weight: "600",
+              weight: "normal",
             },
             padding: 8,
           },
@@ -494,7 +539,10 @@ export default function Purpose() {
     []
   );
 
-  /* EXCEL EXPORT */
+  /* =====================================================
+     EXCEL EXPORT
+  ===================================================== */
+
   const exportExcel = () => {
     try {
       setExcelExporting(true);
@@ -507,7 +555,7 @@ export default function Purpose() {
           Name: cleanName(log.fullname) || "—",
           Purpose:
             purposes.length > 0
-              ? purposes.join(", ")
+              ? purposes.map(getMatchedPurpose).join(", ")
               : "Others",
           "Session In": formatDateTime(log.session_in),
           "Session Out": formatDateTime(log.session_out),
@@ -520,9 +568,18 @@ export default function Purpose() {
         { wch: 7 },
         { wch: 30 },
         { wch: 32 },
-        { wch: 25 },
-        { wch: 25 },
+        { wch: 24 },
+        { wch: 24 },
       ];
+
+      if (rows.length > 0) {
+        worksheet["!autofilter"] = {
+          ref: XLSX.utils.encode_range({
+            s: { r: 0, c: 0 },
+            e: { r: rows.length, c: 4 },
+          }),
+        };
+      }
 
       const workbook = XLSX.utils.book_new();
 
@@ -538,12 +595,18 @@ export default function Purpose() {
       );
     } catch (error) {
       console.error("Excel export error:", error);
+      window.alert(
+        "Unable to export the Excel report. Please try again."
+      );
     } finally {
       setExcelExporting(false);
     }
   };
 
-  /* PDF EXPORT */
+  /* =====================================================
+     FORMAL PDF EXPORT
+  ===================================================== */
+
   const exportPDF = async () => {
     try {
       setExporting(true);
@@ -552,53 +615,90 @@ export default function Purpose() {
         orientation: "portrait",
         unit: "mm",
         format: "letter",
+        compress: true,
       });
 
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
-      const margin = 12;
-      const contentWidth = pageWidth - margin * 2;
 
-      const addFooter = (pageNumber) => {
+      const margin = 16;
+      const contentWidth = pageWidth - margin * 2;
+      const footerY = pageHeight - 9;
+      const bodyBottom = pageHeight - 22;
+
+      /* STANDARD TEXT SETTINGS */
+
+      const setBodyFont = (size = 10) => {
         pdf.setFont("helvetica", "normal");
-        pdf.setFontSize(8);
+        pdf.setFontSize(size);
         pdf.setTextColor(0, 0, 0);
+      };
+
+      /* FOOTER ON EVERY PAGE */
+
+      const addFooter = (pageNumber, totalPages) => {
+        pdf.setDrawColor(180, 180, 180);
+        pdf.setLineWidth(0.2);
+
+        pdf.line(
+          margin,
+          pageHeight - 14,
+          pageWidth - margin,
+          pageHeight - 14
+        );
+
+        setBodyFont(8);
 
         pdf.text(
-          `Page ${pageNumber}`,
-          pageWidth / 2,
-          pageHeight - 7,
-          { align: "center" }
+          "Holy Family Academy | Grade School IMC",
+          margin,
+          footerY
+        );
+
+        pdf.text(
+          `Page ${pageNumber} of ${totalPages}`,
+          pageWidth - margin,
+          footerY,
+          { align: "right" }
         );
       };
 
-      // First page header only
-      const headerHeight = 34;
+      /* =================================================
+         FIRST PAGE HEADER
+      ================================================= */
+
+      const headerTop = 13;
 
       pdf.setFillColor(255, 255, 255);
-      pdf.rect(0, 0, pageWidth, headerHeight, "F");
+      pdf.rect(0, 0, pageWidth, 37, "F");
 
       pdf.setTextColor(0, 0, 0);
       pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(14);
+      pdf.setFontSize(13);
 
       pdf.text(
         "Holy Family Academy",
         pageWidth / 2,
-        9,
+        headerTop,
         { align: "center" }
       );
 
       pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(10);
+      pdf.setFontSize(9);
 
-      pdf.text("Angeles City", pageWidth / 2, 14, {
-        align: "center",
-      });
+      pdf.text(
+        "Angeles City",
+        pageWidth / 2,
+        headerTop + 5,
+        { align: "center" }
+      );
 
-      pdf.text("Grade School IMC", pageWidth / 2, 19, {
-        align: "center",
-      });
+      pdf.text(
+        "Grade School IMC",
+        pageWidth / 2,
+        headerTop + 10,
+        { align: "center" }
+      );
 
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(11);
@@ -606,45 +706,46 @@ export default function Purpose() {
       pdf.text(
         "Internet Usage Report",
         pageWidth / 2,
-        25,
+        headerTop + 17,
         { align: "center" }
       );
 
       pdf.setFont("helvetica", "normal");
       pdf.setFontSize(9);
 
-      pdf.text(periodLabel, pageWidth / 2, 30, {
-        align: "center",
-      });
+      pdf.text(
+        `Reporting Period: ${periodLabel}`,
+        pageWidth / 2,
+        headerTop + 22,
+        { align: "center" }
+      );
 
-      pdf.setDrawColor(180, 180, 180);
-      pdf.setLineWidth(0.3);
+      pdf.setDrawColor(130, 130, 130);
+      pdf.setLineWidth(0.35);
 
       pdf.line(
         margin,
-        headerHeight,
+        38,
         pageWidth - margin,
-        headerHeight
+        38
       );
 
-      let currentY = headerHeight + 6;
+      let currentY = 45;
 
-      // Purpose graph
+      /* =================================================
+         PURPOSE BREAKDOWN GRAPH
+      ================================================= */
+
       pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(12);
+      pdf.setFontSize(11);
       pdf.setTextColor(0, 0, 0);
 
-      pdf.text(
-        "Purpose Breakdown",
-        pageWidth / 2,
-        currentY,
-        { align: "center" }
-      );
+      pdf.text("Purpose Breakdown", margin, currentY);
 
       currentY += 5;
 
       const graphWidth = contentWidth;
-      const graphHeight = 95;
+      const graphHeight = 72;
       const graphX = margin;
       const graphY = currentY;
 
@@ -653,10 +754,13 @@ export default function Purpose() {
         1
       );
 
-      const labelWidth = 43;
-      const valueWidth = 15;
-      const barAreaWidth =
-        graphWidth - labelWidth - valueWidth;
+      const labelWidth = 38;
+      const valueWidth = 12;
+
+      const barAreaWidth = Math.max(
+        20,
+        graphWidth - labelWidth - valueWidth
+      );
 
       const rowHeight =
         graphHeight / PURPOSE_CATEGORIES.length;
@@ -665,131 +769,219 @@ export default function Purpose() {
         const centerY =
           graphY + rowHeight * index + rowHeight / 2;
 
-        pdf.setFont("helvetica", "normal");
-        pdf.setFontSize(10);
-        pdf.setTextColor(0, 0, 0);
+        setBodyFont(8.5);
 
         pdf.text(
           item.name,
           graphX,
-          centerY + 1.5
+          centerY + 1
         );
 
         const barX = graphX + labelWidth;
-        const barHeight = 7;
+        const barHeight = 5;
         const barY = centerY - barHeight / 2;
 
-        const barWidth =
-          maxValue > 0
-            ? (item.count / maxValue) * barAreaWidth
-            : 0;
+        pdf.setFillColor(238, 238, 238);
 
-        pdf.setFillColor(238, 242, 246);
-
-        pdf.roundedRect(
+        pdf.rect(
           barX,
           barY,
           barAreaWidth,
           barHeight,
-          1,
-          1,
           "F"
         );
+
+        const barWidth =
+          (item.count / maxValue) * barAreaWidth;
 
         const hex =
           PURPOSE_COLORS[item.name] || "#6b7280";
 
-        const red = parseInt(hex.substring(1, 3), 16);
-        const green = parseInt(hex.substring(3, 5), 16);
-        const blue = parseInt(hex.substring(5, 7), 16);
+        const red = parseInt(hex.slice(1, 3), 16);
+        const green = parseInt(hex.slice(3, 5), 16);
+        const blue = parseInt(hex.slice(5, 7), 16);
 
-        pdf.setFillColor(red, green, blue);
+        if (barWidth > 0) {
+          pdf.setFillColor(red, green, blue);
 
-        if (barWidth > 0.5) {
-          pdf.roundedRect(
+          pdf.rect(
             barX,
             barY,
             barWidth,
             barHeight,
-            1,
-            1,
             "F"
           );
         }
 
         pdf.setFont("helvetica", "bold");
-        pdf.setFontSize(10);
+        pdf.setFontSize(8.5);
         pdf.setTextColor(0, 0, 0);
 
         pdf.text(
           String(item.count),
-          barX + barAreaWidth + 4,
-          centerY + 1.5
+          barX + barAreaWidth + 3,
+          centerY + 1
         );
       });
 
-      currentY += graphHeight + 3;
+      currentY += graphHeight + 4;
 
-      // Total visits below the graph
-      pdf.setDrawColor(190, 190, 190);
-      pdf.setLineWidth(0.25);
+      /* =================================================
+         SUMMARY TOTAL
+         Only Total Recorded Sessions
+      ================================================= */
 
-      pdf.line(
-        margin,
-        currentY,
-        pageWidth - margin,
-        currentY
-      );
+/* =================================================
+   SUMMARY TOTAL
+================================================= */
 
-      currentY += 7;
+    pdf.setDrawColor(175, 175, 175);
+    pdf.setLineWidth(0.25);
 
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(12);
-      pdf.setTextColor(0, 0, 0);
+    pdf.line(
+      margin,
+      currentY,
+      pageWidth - margin,
+      currentY
+    );
 
-      pdf.text("Total Visits", margin, currentY);
+    currentY += 7;
 
-      pdf.setFontSize(14);
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(10);
+    pdf.setTextColor(0, 0, 0);
 
-      pdf.text(
-        String(filteredLogs.length),
-        pageWidth - margin,
-        currentY,
-        { align: "right" }
-      );
+    pdf.text("Total Purpose Selections", margin, currentY);
 
-      currentY += 9;
+    pdf.setFont("helvetica", "normal");
 
-      // Conclusion with approximately double line spacing
+    pdf.text(
+      String(analytics.total),
+      pageWidth - margin,
+      currentY,
+      { align: "right" }
+    );
+
+    currentY += 7;
+
+      /* =================================================
+         CONCLUSION
+      ================================================= */
+
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(11);
       pdf.setTextColor(0, 0, 0);
 
       pdf.text("Conclusion", margin, currentY);
+
       currentY += 6;
 
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(10);
-      pdf.setTextColor(0, 0, 0);
+      setBodyFont(10);
 
       const conclusionLines = pdf.splitTextToSize(
         summaryText,
         contentWidth
       );
 
-      const lineHeight = 7;
+      const conclusionLineHeight = 7;
 
       conclusionLines.forEach((line) => {
-        if (currentY + lineHeight > pageHeight - 15) {
+        if (currentY + conclusionLineHeight > bodyBottom) {
           pdf.addPage();
-          currentY = 15;
+          currentY = margin + 2;
         }
 
         pdf.text(line, margin, currentY);
-        currentY += lineHeight;
+        currentY += conclusionLineHeight;
       });
 
-      // Registered usage logs start without a report header
+      /* =================================================
+         SIGNATORIES
+         Prepared By / Reviewed By
+      ================================================= */
+
+     /* =================================================
+   SIGNATORIES
+================================================= */
+
+    const signatureBlockHeight = 28;
+
+    if (currentY + signatureBlockHeight > bodyBottom) {
+      pdf.addPage();
+      currentY = margin + 5;
+    } else {
+      currentY += 5;
+    }
+
+    const signatureColumnWidth = contentWidth / 2;
+    const leftColumnX = margin;
+    const rightColumnX = margin + signatureColumnWidth;
+
+    const signatureLabelY = currentY;
+    const nameY = currentY + 10;
+    const lineY = currentY + 12;
+    const positionY = currentY + 16;
+
+    /* PREPARED BY */
+
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(9);
+    pdf.setTextColor(0, 0, 0);
+
+    pdf.text("Prepared By:", leftColumnX, signatureLabelY);
+
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(9);
+
+    pdf.text("Airon Lingad", leftColumnX, nameY);
+
+    pdf.setDrawColor(0, 0, 0);
+    pdf.setLineWidth(0.25);
+
+    pdf.line(
+      leftColumnX,
+      lineY,
+      leftColumnX + 48,
+      lineY
+    );
+
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(9);
+
+    pdf.text("Library IT Staff", leftColumnX, positionY);
+
+    /* REVIEWED BY */
+
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(9);
+
+    pdf.text("Reviewed By:", rightColumnX, signatureLabelY);
+
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(9);
+
+    pdf.text("Remedios Baking", rightColumnX, nameY);
+
+    pdf.setDrawColor(0, 0, 0);
+    pdf.setLineWidth(0.25);
+
+    pdf.line(
+      rightColumnX,
+      lineY,
+      rightColumnX + 48,
+      lineY
+    );
+
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(9);
+
+    pdf.text("IMC Coordinator", rightColumnX, positionY);
+
+      /* =================================================
+         REGISTERED USAGE RECORDS
+         START ON A SEPARATE PAGE
+      ================================================= */
+
       pdf.addPage();
 
       const logRows = filteredLogs.map((log, index) => {
@@ -799,22 +991,23 @@ export default function Purpose() {
           index + 1,
           cleanName(log.fullname) || "—",
           purposes.length > 0
-            ? purposes.join(", ")
+            ? purposes.map(getMatchedPurpose).join(", ")
             : "Others",
-          formatDateTimeForPDF(log.session_in),
-          formatDateTimeForPDF(log.session_out),
+          formatDateTime(log.session_in),
+          formatDateTime(log.session_out),
         ];
       });
 
       autoTable(pdf, {
-        startY: 12,
+        startY: margin,
         margin: {
           left: margin,
           right: margin,
-          top: 12,
-          bottom: 15,
+          top: margin,
+          bottom: 18,
         },
         tableWidth: contentWidth,
+
         head: [
           [
             "No.",
@@ -824,74 +1017,112 @@ export default function Purpose() {
             "Session Out",
           ],
         ],
+
         body:
           logRows.length > 0
             ? logRows
-            : [["", "No records found", "", "", ""]],
+            : [["—", "No records found", "—", "—", "—"]],
+
         theme: "grid",
         showHead: "everyPage",
+
         styles: {
           font: "helvetica",
           fontSize: 8,
           textColor: [0, 0, 0],
-          lineColor: [190, 190, 190],
+          lineColor: [180, 180, 180],
           lineWidth: 0.2,
-          cellPadding: 1.5,
+          cellPadding: 2,
           valign: "middle",
           overflow: "linebreak",
+          minCellHeight: 6,
         },
+
         headStyles: {
           fillColor: [255, 255, 255],
           textColor: [0, 0, 0],
           fontStyle: "bold",
           fontSize: 8,
-          lineColor: [150, 150, 150],
+          lineColor: [130, 130, 130],
+          lineWidth: 0.25,
+          halign: "left",
         },
+
         bodyStyles: {
           textColor: [0, 0, 0],
           fontStyle: "normal",
         },
-        columnStyles: {
-          0: { cellWidth: 10, halign: "center" },
-          1: { cellWidth: 45 },
-          2: { cellWidth: 48 },
-          3: { cellWidth: 47 },
-          4: { cellWidth: 47 },
-        },
-        didParseCell: (data) => {
-          if (data.section === "body") {
-            data.cell.styles.textColor = [0, 0, 0];
 
-            if (
-              data.column.index === 1 ||
-              data.column.index === 2
-            ) {
-              data.cell.styles.fontStyle = "normal";
-            }
+        alternateRowStyles: {
+          fillColor: [248, 248, 248],
+        },
+
+        columnStyles: {
+          0: {
+            cellWidth: 9,
+            halign: "center",
+          },
+          1: {
+            cellWidth: 42,
+          },
+          2: {
+            cellWidth: 45,
+          },
+          3: {
+            cellWidth: 44,
+          },
+          4: {
+            cellWidth: 44,
+          },
+        },
+
+        didParseCell: (data) => {
+          data.cell.styles.textColor = [0, 0, 0];
+
+          if (data.section === "body") {
+            data.cell.styles.fontStyle = "normal";
           }
         },
+
+        rowPageBreak: "avoid",
+        pageBreak: "auto",
       });
 
-      // Add page numbers to all pages
+      /* =================================================
+         PAGE NUMBERS AND FOOTERS
+      ================================================= */
+
       const totalPdfPages = pdf.internal.getNumberOfPages();
 
       for (let page = 1; page <= totalPdfPages; page++) {
         pdf.setPage(page);
-        addFooter(page);
+        addFooter(page, totalPdfPages);
       }
+
+      /* SAVE PDF */
 
       pdf.save(
         `Internet_Usage_Report_${periodLabel.replace(/\s+/g, "_")}.pdf`
       );
     } catch (error) {
       console.error("PDF export error:", error);
+
+      window.alert(
+        "Unable to export the PDF report. Please try again."
+      );
     } finally {
       setExporting(false);
     }
   };
 
+  /* =====================================================
+     USER INTERFACE
+  ===================================================== */
+
   return (
     <div className="usage-content">
+      {/* PAGE HEADER */}
+
       <div className="usage-header">
         <div>
           <h1>Usage</h1>
@@ -930,7 +1161,8 @@ export default function Purpose() {
         </div>
       </div>
 
-      {/* FILTER BAR */}
+      {/* FILTERS */}
+
       <div className="usage-control-bar">
         <div className="usage-filter-group">
           <label htmlFor="usage-month">Month</label>
@@ -945,10 +1177,7 @@ export default function Purpose() {
             <option value="all">All Months</option>
 
             {MONTHS.map((month) => (
-              <option
-                key={month.value}
-                value={month.value}
-              >
+              <option key={month.value} value={month.value}>
                 {month.label}
               </option>
             ))}
@@ -976,48 +1205,60 @@ export default function Purpose() {
         </div>
 
         <div className="usage-period-display">
-          <span>Showing:</span>
+          <span>Reporting Period:</span>
           <strong>{periodLabel}</strong>
         </div>
       </div>
 
-      {/* STAT CARDS */}
+      {/* SUMMARY CARDS */}
+
       <div className="usage-summary-grid">
         <div className="usage-stat-card">
-          <span className="usage-stat-label">Total Usage</span>
+          <span className="usage-stat-label">
+            Purpose Selections
+          </span>
           <span className="usage-stat-value">
             {analytics.total}
           </span>
         </div>
 
         <div className="usage-stat-card">
-          <span className="usage-stat-label">Most Used</span>
+          <span className="usage-stat-label">
+            Most Used Purpose
+          </span>
           <span className="usage-stat-value usage-stat-purpose">
             {highestPurpose ? highestPurpose.name : "—"}
           </span>
         </div>
 
         <div className="usage-stat-card">
-          <span className="usage-stat-label">Least Used</span>
+          <span className="usage-stat-label">
+            Least Used Purpose
+          </span>
           <span className="usage-stat-value usage-stat-purpose">
             {lowestPurpose ? lowestPurpose.name : "—"}
           </span>
         </div>
 
         <div className="usage-stat-card">
-          <span className="usage-stat-label">Sessions</span>
+          <span className="usage-stat-label">
+            Recorded Sessions
+          </span>
           <span className="usage-stat-value">
             {analytics.sessions}
           </span>
         </div>
       </div>
 
-      {/* WEB GRAPH */}
+      {/* CHART */}
+
       <section className="usage-section usage-chart-section">
         <div className="usage-section-header">
           <div>
             <h2>Purpose Breakdown</h2>
-            <p>Usage ranked from highest to lowest</p>
+            <p>
+              Distribution of recorded purpose selections, ranked by frequency
+            </p>
           </div>
         </div>
 
@@ -1042,6 +1283,7 @@ export default function Purpose() {
       </section>
 
       {/* CONCLUSION */}
+
       <section className="usage-summary-box">
         <div className="usage-summary-box-header">
           <h2>Conclusion</h2>
@@ -1050,23 +1292,23 @@ export default function Purpose() {
         <p>{summaryText}</p>
       </section>
 
-      {/* PURPOSE BREAKDOWN */}
+      {/* DETAILED PURPOSE BREAKDOWN */}
+
       <section className="usage-section">
         <div className="usage-section-header">
           <div>
-            <h2>Purpose Breakdown</h2>
-            <p>Detailed distribution of recorded purposes</p>
+            <h2>Detailed Purpose Breakdown</h2>
+            <p>
+              Recorded selections and their percentage distribution
+            </p>
           </div>
         </div>
 
         <div className="usage-breakdown-list">
           {breakdown.map((item, index) => (
-            <div
-              className="usage-breakdown-item"
-              key={item.name}
-            >
+            <div className="usage-breakdown-item" key={item.name}>
               <div className="usage-breakdown-rank">
-                #{index + 1}
+                {index + 1}.
               </div>
 
               <div
@@ -1084,7 +1326,7 @@ export default function Purpose() {
 
                   <span className="usage-breakdown-count">
                     {item.count}{" "}
-                    {item.count === 1 ? "visit" : "visits"}
+                    {item.count === 1 ? "selection" : "selections"}
                   </span>
                 </div>
 
@@ -1107,7 +1349,8 @@ export default function Purpose() {
         </div>
       </section>
 
-      {/* REGISTERED LOGS */}
+      {/* REGISTERED USAGE LOGS */}
+
       <section className="usage-section">
         <div className="usage-section-header">
           <div>
@@ -1118,8 +1361,8 @@ export default function Purpose() {
           </div>
 
           <span className="usage-record-count">
-            {filteredLogs.length} record
-            {filteredLogs.length === 1 ? "" : "s"}
+            {filteredLogs.length}{" "}
+            {filteredLogs.length === 1 ? "record" : "records"}
           </span>
         </div>
 
@@ -1138,19 +1381,13 @@ export default function Purpose() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td
-                    colSpan="5"
-                    className="usage-table-message"
-                  >
+                  <td colSpan="5" className="usage-table-message">
                     Loading records...
                   </td>
                 </tr>
               ) : paginatedLogs.length === 0 ? (
                 <tr>
-                  <td
-                    colSpan="5"
-                    className="usage-table-message"
-                  >
+                  <td colSpan="5" className="usage-table-message">
                     No usage records found.
                   </td>
                 </tr>
@@ -1172,17 +1409,13 @@ export default function Purpose() {
 
                       <td className="usage-purpose-cell">
                         {purposes.length > 0
-                          ? purposes.join(", ")
+                          ? purposes.map(getMatchedPurpose).join(", ")
                           : "Others"}
                       </td>
 
-                      <td>
-                        {formatDateTime(log.session_in)}
-                      </td>
+                      <td>{formatDateTime(log.session_in)}</td>
 
-                      <td>
-                        {formatDateTime(log.session_out)}
-                      </td>
+                      <td>{formatDateTime(log.session_out)}</td>
                     </tr>
                   );
                 })
@@ -1192,14 +1425,13 @@ export default function Purpose() {
         </div>
 
         {/* PAGINATION */}
+
         {!loading && filteredLogs.length > ITEMS_PER_PAGE && (
           <div className="usage-pagination">
             <button
               type="button"
               onClick={() =>
-                setCurrentPage((page) =>
-                  Math.max(1, page - 1)
-                )
+                setCurrentPage((page) => Math.max(1, page - 1))
               }
               disabled={safeCurrentPage === 1}
             >
@@ -1228,9 +1460,7 @@ export default function Purpose() {
                 }
                 onClick={() => setCurrentPage(page)}
                 aria-current={
-                  safeCurrentPage === page
-                    ? "page"
-                    : undefined
+                  safeCurrentPage === page ? "page" : undefined
                 }
               >
                 {page}
