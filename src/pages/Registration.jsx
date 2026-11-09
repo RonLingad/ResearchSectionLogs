@@ -1,3 +1,4 @@
+
 import "./Registration.css";
 import background from "../assets/hfabg.jpg";
 import { useEffect, useState } from "react";
@@ -14,7 +15,8 @@ export default function Registration() {
   const [showModal, setShowModal] = useState(false);
   const [endTime, setEndTime] = useState("");
 
-  // State for Alert Modal
+  const [showRulesModal, setShowRulesModal] = useState(true);
+
   const [showAlertModal, setShowAlertModal] = useState(false);
   const [alertMessage, setAlertMessage] = useState("");
 
@@ -28,7 +30,15 @@ export default function Registration() {
     "Others",
   ];
 
-  // Toggle checkbox state
+  const internetRules = [
+    "Use the internet for educational purposes only, such as searching for assignments, activities, research, balitaan, trivia, printing, Aralinks, and other school-related tasks.",
+    "Using Google Maps or browsing pictures and websites unrelated to assignments is prohibited. This includes randomly searching for cars, toys, anime, and similar content.",
+    "Always close all browser tabs and log out of all accounts before leaving the computer.",
+    "Each computer session is limited to a maximum of 15 minutes.",
+    "Browsing, searching for, or watching inappropriate content is strictly prohibited and may result in a warning.",
+    "Online games and social media are strongly discouraged and must not be used during computer sessions.",
+  ];
+
   const handlePurposeChange = (purpose) => {
     setPurposes((prev) =>
       prev.includes(purpose)
@@ -37,7 +47,7 @@ export default function Registration() {
     );
   };
 
-  // Live Clock & Date
+  // LIVE CLOCK
   useEffect(() => {
     const updateClock = () => {
       const now = new Date();
@@ -62,22 +72,28 @@ export default function Registration() {
     };
 
     updateClock();
+
     const interval = setInterval(updateClock, 1000);
+
     return () => clearInterval(interval);
   }, []);
 
-  // Register Student
+  // REGISTER WORKSTATION
   const handleRegister = async (e) => {
     e.preventDefault();
 
     if (!fullname.trim() || !grade) {
-      setAlertMessage("Please enter your name and select a grade level.");
+      setAlertMessage(
+        "Please enter your name and select a grade level."
+      );
       setShowAlertModal(true);
       return;
     }
 
     if (purposes.length === 0) {
-      setAlertMessage("Please select at least one purpose for your visit.");
+      setAlertMessage(
+        "Please select at least one purpose for your visit."
+      );
       setShowAlertModal(true);
       return;
     }
@@ -85,39 +101,55 @@ export default function Registration() {
     setLoading(true);
 
     const sessionIn = new Date();
-    const sessionOut = new Date(sessionIn.getTime() + 15 * 60 * 1000);
-
-    const { error } = await supabase.from("logs").insert([
-      {
-        fullname: fullname.trim(),
-        grade: grade,
-        purposes: purposes,
-        session_in: sessionIn.toISOString(),
-        session_out: sessionOut.toISOString(),
-      },
-    ]);
-
-    setLoading(false);
-
-    if (error) {
-      console.error(error);
-      setAlertMessage(error.message);
-      setShowAlertModal(true);
-      return;
-    }
-
-    setEndTime(
-      sessionOut.toLocaleTimeString("en-PH", {
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: true,
-      })
+    const sessionOut = new Date(
+      sessionIn.getTime() + 15 * 60 * 1000
     );
 
-    setShowModal(true);
-    setFullname("");
-    setGrade("");
-    setPurposes([]);
+    try {
+      const { error } = await supabase.from("logs").insert([
+        {
+          fullname: fullname.trim(),
+          grade: grade,
+          purposes: purposes,
+          session_in: sessionIn.toISOString(),
+          session_out: sessionOut.toISOString(),
+        },
+      ]);
+
+      if (error) {
+        console.error(error);
+        setAlertMessage(error.message);
+        setShowAlertModal(true);
+        return;
+      }
+
+      setEndTime(
+        sessionOut.toLocaleTimeString("en-PH", {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: true,
+        })
+      );
+
+      setShowModal(true);
+
+      setFullname("");
+      setGrade("");
+      setPurposes([]);
+    } catch (error) {
+      console.error(error);
+      setAlertMessage(
+        "Something went wrong while registering. Please try again."
+      );
+      setShowAlertModal(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleStartSession = () => {
+    setShowModal(false);
+    setShowRulesModal(true);
   };
 
   return (
@@ -128,35 +160,38 @@ export default function Registration() {
       <div className="overlay"></div>
 
       <div className="registration-container">
-        {/* Header Section */}
-        <div className="registration-header">
-          <div className="clock-pill">
-            <div className="live-indicator">
-              <span className="dot"></span>
-              LIVE
-            </div>
-            <div className="clock-details">
-              <span className="clock-time">{currentTime}</span>
-              <span className="clock-date">{currentDate}</span>
-            </div>
-          </div>
 
-          <h1 className="title">Internet & Research Section</h1>
-          <p className="subtitle">Student Computer Access Registration</p>
+        {/* HEADER SECTION */}
+        <div className="registration-header">
+          <h1 className="title">
+            Internet & Research Section
+          </h1>
+
+          <p className="subtitle">
+            Student Computer Access Registration
+          </p>
         </div>
 
-        {/* Content Layout */}
+        {/* CONTENT LAYOUT */}
         <div className="registration-content">
-          {/* Form Side */}
+
+          {/* REGISTRATION FORM */}
           <div className="form-card">
             <h3>Usage Registration</h3>
+
             <p className="form-instruction">
-              Please complete your details to initiate a computer workstation session.
+              Please complete your details to initiate a
+              computer workstation session.
             </p>
 
             <form onSubmit={handleRegister}>
+
+              {/* FULL NAME */}
               <div className="input-group">
-                <label htmlFor="fullname">Full Name</label>
+                <label htmlFor="fullname">
+                  Full Name
+                </label>
+
                 <div className="input-field-wrapper">
                   <svg
                     className="input-icon"
@@ -171,18 +206,25 @@ export default function Registration() {
                       d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
                     />
                   </svg>
+
                   <input
                     id="fullname"
                     type="text"
                     placeholder="Juan De La Cruz"
                     value={fullname}
-                    onChange={(e) => setFullname(e.target.value)}
+                    onChange={(e) =>
+                      setFullname(e.target.value)
+                    }
                   />
                 </div>
               </div>
 
+              {/* GRADE / ROLE */}
               <div className="input-group">
-                <label htmlFor="grade">Grade / Role</label>
+                <label htmlFor="grade">
+                  Grade / Role
+                </label>
+
                 <div className="input-field-wrapper">
                   <svg
                     className="input-icon"
@@ -197,19 +239,29 @@ export default function Registration() {
                       d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
                     />
                   </svg>
+
                   <select
                     id="grade"
                     value={grade}
-                    onChange={(e) => setGrade(e.target.value)}
+                    onChange={(e) =>
+                      setGrade(e.target.value)
+                    }
                   >
-                    <option value="">Select Option...</option>
+                    <option value="">
+                      Select Option...
+                    </option>
+
                     <option value="Grade 1">Grade 1</option>
                     <option value="Grade 2">Grade 2</option>
                     <option value="Grade 3">Grade 3</option>
                     <option value="Grade 4">Grade 4</option>
                     <option value="Grade 5">Grade 5</option>
                     <option value="Grade 6">Grade 6</option>
-                    <option value="Teacher">Teacher</option>
+
+                    <option value="Teacher">
+                      Teacher
+                    </option>
+
                     <option value="Non-Teaching Personnel">
                       Non-Teaching Personnel
                     </option>
@@ -217,23 +269,31 @@ export default function Registration() {
                 </div>
               </div>
 
-              {/* Purpose Checkboxes */}
+              {/* PURPOSE OF VISIT */}
               <div className="input-group">
                 <label>Purpose of Visit</label>
+
                 <div className="checkbox-grid">
                   {availablePurposes.map((item) => (
-                    <label key={item} className="checkbox-label">
+                    <label
+                      key={item}
+                      className="checkbox-label"
+                    >
                       <input
                         type="checkbox"
                         checked={purposes.includes(item)}
-                        onChange={() => handlePurposeChange(item)}
+                        onChange={() =>
+                          handlePurposeChange(item)
+                        }
                       />
+
                       <span>{item}</span>
                     </label>
                   ))}
                 </div>
               </div>
 
+              {/* SUBMIT BUTTON */}
               <button
                 type="submit"
                 className="submit-btn"
@@ -241,11 +301,13 @@ export default function Registration() {
               >
                 {loading ? (
                   <span className="btn-loading">
-                    <span className="btn-spinner"></span> Processing...
+                    <span className="btn-spinner"></span>
+                    Processing...
                   </span>
                 ) : (
                   <>
                     <span>Register Workstation</span>
+
                     <svg
                       className="btn-arrow"
                       fill="none"
@@ -265,7 +327,7 @@ export default function Registration() {
             </form>
           </div>
 
-          {/* Laboratory Guidelines Side */}
+          {/* LABORATORY GUIDELINES */}
           <div className="reminders-card">
             <div className="reminders-header">
               <svg
@@ -281,40 +343,302 @@ export default function Registration() {
                   d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                 />
               </svg>
+
               <h4>Laboratory Guidelines</h4>
             </div>
 
             <ul className="reminder-list">
               <li>
                 <span className="rule-num">1</span>
-                <span>Register at the station before using any computer.</span>
+                <span>
+                  Register at the station before using any computer.
+                </span>
               </li>
+
               <li>
                 <span className="rule-num">2</span>
-                <span>Let the staff-in-charge assign your workstation.</span>
+                <span>
+                  Let the staff-in-charge assign your workstation.
+                </span>
               </li>
+
               <li>
                 <span className="rule-num">3</span>
-                <span>Handle all equipment with care and cleanliness.</span>
+                <span>
+                  Handle all equipment with care and cleanliness.
+                </span>
               </li>
+
               <li>
                 <span className="rule-num">4</span>
-                <span>Strictly no food or drinks inside the laboratory.</span>
+                <span>
+                  Strictly no food or drinks inside the laboratory.
+                </span>
               </li>
+
               <li>
                 <span className="rule-num">5</span>
-                <span>Save files to cloud storage before leaving.</span>
+                <span>
+                  Save files to cloud storage before leaving.
+                </span>
               </li>
+
               <li>
                 <span className="rule-num">6</span>
-                <span>Log out and clean your work area when finished.</span>
+                <span>
+                  Log out and clean your work area when finished.
+                </span>
               </li>
             </ul>
           </div>
         </div>
       </div>
 
-      {/* Validation Alert Modal (Inline Styles) */}
+      {/* INTERNET USAGE REMINDER POPUP */}
+      {showRulesModal && (
+        <div
+          className="rules-overlay"
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.70)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 2000,
+            padding: "12px",
+            boxSizing: "border-box",
+          }}
+        >
+          <div
+            className="rules-modal"
+            style={{
+              backgroundColor: "#ffffff",
+              borderRadius: "4px",
+              padding: "24px 30px",
+              width: "100%",
+              maxWidth: "1150px",
+              maxHeight: "calc(100vh - 24px)",
+              overflowY: "auto",
+              boxSizing: "border-box",
+              border: "1px solid #e5e7eb",
+            }}
+          >
+            {/* POPUP HEADER AND LIVE CLOCK */}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: "20px",
+                flexWrap: "wrap",
+                borderBottom: "2px solid #e5e7eb",
+                paddingBottom: "14px",
+                marginBottom: "16px",
+              }}
+            >
+              <div>
+                <h2
+                  style={{
+                    margin: 0,
+                    fontSize: "1.6rem",
+                    fontWeight: "800",
+                    color: "#111827",
+                    letterSpacing: "0.3px",
+                  }}
+                >
+                  FIRST, A REMINDER!
+                </h2>
+
+                <p
+                  style={{
+                    margin: "6px 0 0",
+                    color: "#6b7280",
+                    fontSize: "0.9rem",
+                  }}
+                >
+                  Please read and follow the internet usage
+                  rules before proceeding with your registration.
+                </p>
+              </div>
+
+              {/* LIVE CLOCK INSIDE POPUP */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "12px",
+                  padding: "10px 15px",
+                  backgroundColor: "#f9fafb",
+                  border: "1px solid #e5e7eb",
+                  borderRadius: "4px",
+                  flexShrink: 0,
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    color: "#16a34a",
+                    fontSize: "0.72rem",
+                    fontWeight: "800",
+                  }}
+                >
+                  <span
+                    style={{
+                      width: "8px",
+                      height: "8px",
+                      borderRadius: "50%",
+                      backgroundColor: "#22c55e",
+                    }}
+                  ></span>
+                  LIVE
+                </div>
+
+                <div>
+                  <div
+                    style={{
+                      fontSize: "1.15rem",
+                      fontWeight: "800",
+                      color: "#111827",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {currentTime}
+                  </div>
+
+                  <div
+                    style={{
+                      fontSize: "0.75rem",
+                      color: "#6b7280",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {currentDate}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* INTRODUCTION */}
+            <p
+              style={{
+                color: "#374151",
+                fontSize: "0.9rem",
+                lineHeight: "1.5",
+                marginBottom: "16px",
+              }}
+            >
+              Computers and internet access are provided
+              for educational purposes only. All students
+              and users are expected to observe the
+              following rules:
+            </p>
+
+            {/* RULES - TWO COLUMNS */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+                gap: "10px 16px",
+                marginBottom: "18px",
+              }}
+            >
+              {internetRules.map((rule, index) => (
+                <div
+                  key={index}
+                  style={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: "12px",
+                    padding: "12px 14px",
+                    backgroundColor: "#f9fafb",
+                    border: "1px solid #e5e7eb",
+                    borderRadius: "4px",
+                    boxSizing: "border-box",
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: "0.95rem",
+                      fontWeight: "700",
+                      color: "#2563eb",
+                      minWidth: "20px",
+                    }}
+                  >
+                    {index + 1}.
+                  </span>
+
+                  <p
+                    style={{
+                      margin: 0,
+                      color: "#374151",
+                      fontSize: "0.88rem",
+                      lineHeight: "1.5",
+                    }}
+                  >
+                    {rule}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            {/* WARNING FOOTER */}
+            <div
+              style={{
+                borderTop: "1px solid #e5e7eb",
+                paddingTop: "14px",
+                marginBottom: "16px",
+                textAlign: "center",
+              }}
+            >
+              <p
+                style={{
+                  margin: 0,
+                  color: "#dc2626",
+                  fontSize: "0.9rem",
+                  fontWeight: "700",
+                }}
+              >
+                PLEASE USE THE INTERNET RESPONSIBLY!
+              </p>
+
+              <p
+                style={{
+                  margin: "5px 0 0",
+                  color: "#6b7280",
+                  fontSize: "0.82rem",
+                }}
+              >
+                Failure to follow these rules may result
+                in a warning.
+              </p>
+            </div>
+
+            {/* PROCEED BUTTON */}
+            <button
+              type="button"
+              onClick={() => setShowRulesModal(false)}
+              style={{
+                width: "100%",
+                padding: "13px",
+                backgroundColor: "#2563eb",
+                color: "#ffffff",
+                border: "none",
+                borderRadius: "4px",
+                fontSize: "0.95rem",
+                fontWeight: "700",
+                cursor: "pointer",
+              }}
+            >
+              I Understand, Proceed to Registration
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* VALIDATION ALERT MODAL */}
       {showAlertModal && (
         <div
           style={{
@@ -325,7 +649,7 @@ export default function Registration() {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            zIndex: 1000,
+            zIndex: 3000,
             animation: "fadeIn 0.2s ease-out",
           }}
           onClick={() => setShowAlertModal(false)}
@@ -333,7 +657,7 @@ export default function Registration() {
           <div
             style={{
               backgroundColor: "#ffffff",
-              borderRadius: "16px",
+              borderRadius: "10px",
               padding: "28px 24px",
               maxWidth: "380px",
               width: "90%",
@@ -343,7 +667,6 @@ export default function Registration() {
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Warning Icon Badge */}
             <div
               style={{
                 width: "56px",
@@ -358,7 +681,10 @@ export default function Registration() {
               }}
             >
               <svg
-                style={{ width: "32px", height: "32px" }}
+                style={{
+                  width: "32px",
+                  height: "32px",
+                }}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -382,6 +708,7 @@ export default function Registration() {
             >
               Missing Information
             </h3>
+
             <p
               style={{
                 margin: "0 0 24px 0",
@@ -402,14 +729,11 @@ export default function Registration() {
                 backgroundColor: "#dc2626",
                 color: "#ffffff",
                 border: "none",
-                borderRadius: "10px",
+                borderRadius: "6px",
                 fontSize: "0.95rem",
                 fontWeight: "600",
                 cursor: "pointer",
-                transition: "background-color 0.2s",
               }}
-              onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#b91c1c")}
-              onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "#dc2626")}
             >
               Got it, thanks
             </button>
@@ -417,9 +741,12 @@ export default function Registration() {
         </div>
       )}
 
-      {/* Confirmation Success Modal */}
+      {/* REGISTRATION SUCCESS MODAL */}
       {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
+        <div
+          className="modal-overlay"
+          onClick={() => setShowModal(false)}
+        >
           <div
             className="success-modal"
             onClick={(e) => e.stopPropagation()}
@@ -441,18 +768,24 @@ export default function Registration() {
             </div>
 
             <h2>Registration Successful!</h2>
+
             <p className="modal-subtext">
               You may now proceed to your assigned workstation.
             </p>
 
             <div className="session-card">
-              <span className="session-label">Your Session Expires At</span>
-              <span className="session-time">{endTime}</span>
+              <span className="session-label">
+                Your Session Expires At
+              </span>
+
+              <span className="session-time">
+                {endTime}
+              </span>
             </div>
 
             <button
               className="modal-close-btn"
-              onClick={() => setShowModal(false)}
+              onClick={handleStartSession}
             >
               Start Session
             </button>
