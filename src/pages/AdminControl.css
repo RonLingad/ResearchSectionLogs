@@ -1,3 +1,4 @@
+
 :root {
   --blue: #0b2a4a;
   --blue-light: #eef5fb;
@@ -17,12 +18,8 @@
 
   --border: #c9d9e8;
 
-  --font:
-    Arial,
-    Helvetica,
-    sans-serif;
+  --font: Arial, Helvetica, sans-serif;
 }
-
 
 /* ==========================================
    GLOBAL
@@ -32,16 +29,33 @@
   box-sizing: border-box;
 }
 
+html {
+  width: 100%;
+  min-height: 100%;
+  height: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
 body {
   margin: 0;
+  width: 100%;
+  min-height: 100vh;
+  height: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
 
   font-family: var(--font);
-
   background: var(--white);
-
   color: var(--text-blue);
 }
 
+#root {
+  width: 100%;
+  min-height: 100vh;
+  height: auto;
+  overflow: visible;
+}
 
 /* ==========================================
    MAIN PANEL
@@ -49,42 +63,37 @@ body {
 
 .admin-panel {
   display: flex;
-
   width: 100%;
-
   min-height: 100vh;
-
   background: var(--white);
 }
-
 
 /* ==========================================
    SIDEBAR
 ========================================== */
 
 .admin-sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+
   width: 265px;
-
   min-width: 265px;
-
+  height: 100vh;
+  height: 100dvh;
   min-height: 100vh;
 
-  position: sticky;
+  display: flex;
+  flex-direction: column;
 
-  top: 0;
-
-  align-self: flex-start;
-
-  overflow-y: auto;
+  overflow: hidden;
 
   background: var(--blue);
-
   color: var(--white);
+  border-right: 1px solid var(--blue-border);
 
-  border-right: 1px solid
-    var(--blue-border);
+  z-index: 1000;
 }
-
 
 /* ==========================================
    SIDEBAR BRAND
@@ -92,37 +101,25 @@ body {
 
 .sidebar-brand {
   padding: 24px 18px 21px;
-
-  border-bottom: 1px solid
-    rgba(255, 255, 255, 0.25);
-
+  border-bottom: 1px solid rgba(255, 255, 255, 0.25);
   text-align: center;
 }
 
 .sidebar-brand h1 {
   margin: 0;
-
   color: var(--white);
-
   font-size: 25px;
-
   font-weight: 700;
-
   letter-spacing: -0.3px;
 }
 
 .sidebar-brand span {
   display: block;
-
   margin-top: 7px;
-
   color: var(--white);
-
   font-size: 12px;
-
   font-weight: 400;
 }
-
 
 /* ==========================================
    SIDEBAR MENU
@@ -134,20 +131,13 @@ body {
 
 .menu-title {
   padding: 12px 18px;
-
   color: var(--white);
-
   font-size: 11px;
-
   font-weight: 700;
-
   letter-spacing: 0.8px;
-
   text-align: center;
-
   text-transform: uppercase;
 }
-
 
 /* ==========================================
    MENU ITEM
@@ -155,58 +145,40 @@ body {
 
 .menu-item {
   display: flex;
-
   align-items: center;
-
   justify-content: center;
 
   width: 100%;
-
   min-height: 50px;
-
   padding: 0 20px;
 
   border: none;
-
-  border-left: 4px solid
-    transparent;
+  border-left: 4px solid transparent;
 
   background: transparent;
-
   color: var(--white);
 
   text-align: center;
-
   font-family: var(--font);
-
   font-size: 15px;
-
   font-weight: 500;
 
   cursor: pointer;
 
-  transition:
-    background 0.15s ease,
-    border 0.15s ease;
+  transition: background 0.15s ease, border 0.15s ease;
 }
 
 .menu-item:hover {
   background: var(--blue-hover);
-
   color: var(--white);
 }
 
 .menu-item.active {
   background: var(--white);
-
-  border-left-color:
-    var(--green);
-
+  border-left-color: var(--green);
   color: var(--blue);
-
   font-weight: 700;
 }
-
 
 /* ==========================================
    ANALYTICS
@@ -214,44 +186,32 @@ body {
 
 .sidebar-analytics {
   margin-top: 17px;
-
-  border-top: 1px solid
-    rgba(255, 255, 255, 0.25);
-
+  border-top: 1px solid rgba(255, 255, 255, 0.25);
   padding-bottom: 20px;
 }
 
 .side-stat {
   display: flex;
-
   align-items: center;
-
   justify-content: space-between;
 
   min-height: 46px;
-
   padding: 0 22px;
 
-  border-bottom: 1px solid
-    rgba(255, 255, 255, 0.18);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.18);
 }
 
 .side-stat span {
   color: var(--white);
-
   font-size: 13px;
-
   font-weight: 500;
 }
 
 .side-stat strong {
   color: var(--white);
-
   font-size: 17px;
-
   font-weight: 700;
 }
-
 
 /* ==========================================
    PEAK USAGE
@@ -259,51 +219,66 @@ body {
 
 .side-peak {
   display: flex;
-
   flex-direction: column;
-
   align-items: center;
-
   gap: 5px;
 
   margin: 16px 17px 0;
-
   padding: 15px 10px;
 
-  border: 1px solid
-    rgba(255, 255, 255, 0.35);
-
+  border: 1px solid rgba(255, 255, 255, 0.35);
   border-radius: 5px;
 
   background: var(--green);
-
   text-align: center;
 }
 
 .side-peak span {
   color: var(--white);
-
   font-size: 11px;
-
   font-weight: 700;
-
   text-transform: uppercase;
 }
 
 .side-peak strong {
   color: var(--white);
-
   font-size: 14px;
-
   font-weight: 700;
 }
 
 .side-peak small {
   color: var(--white);
-
   font-size: 11px;
 }
 
+/* ==========================================
+   LOGOUT
+========================================== */
+
+.sidebar-logout {
+  margin-top: auto;
+  padding: 20px;
+}
+
+.logout-button {
+  width: 100%;
+  min-height: 45px;
+
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 6px;
+
+  background: transparent;
+  color: var(--white);
+
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.logout-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
 
 /* ==========================================
    MAIN CONTENT
@@ -311,14 +286,19 @@ body {
 
 .admin-content {
   flex: 1;
-
   min-width: 0;
+
+  width: calc(100% - 265px);
+  margin-left: 265px;
+
+  min-height: 100vh;
+  height: auto;
 
   padding: 25px 28px 30px;
 
   background: var(--white);
+  overflow: visible;
 }
-
 
 /* ==========================================
    TOP BAR
@@ -326,42 +306,33 @@ body {
 
 .top-bar {
   display: flex;
-
   align-items: center;
-
   justify-content: space-between;
 
   min-height: 38px;
-
   margin-bottom: 14px;
 }
 
 .breadcrumb {
   color: var(--text-blue);
-
   font-size: 14px;
-
   font-weight: 600;
 }
 
 .breadcrumb span {
   margin: 0 10px;
-
   color: var(--blue);
 }
 
 .result-count {
   color: var(--text-blue-light);
-
   font-size: 13px;
 }
 
 .result-count strong {
   color: var(--blue);
-
   font-size: 14px;
 }
-
 
 /* ==========================================
    FILTER BAR
@@ -369,18 +340,14 @@ body {
 
 .control-bar {
   display: flex;
-
   align-items: center;
-
   gap: 9px;
 
   min-height: 43px;
-
   margin-bottom: 14px;
 
   flex-wrap: nowrap;
 }
-
 
 /* ==========================================
    SEARCH BAR
@@ -388,11 +355,8 @@ body {
 
 .search-box {
   display: flex;
-
   width: 430px;
-
   min-width: 330px;
-
   height: 42px;
 }
 
@@ -403,19 +367,14 @@ body {
 
   padding: 0 14px;
 
-  border: 1px solid
-    var(--blue-border);
-
+  border: 1px solid var(--blue-border);
   border-right: none;
 
   outline: none;
-
   background: var(--white);
-
   color: var(--text-blue);
 
   font-family: var(--font);
-
   font-size: 14px;
 }
 
@@ -425,24 +384,18 @@ body {
 
 .search-box input::placeholder {
   color: var(--text-blue-light);
-
   opacity: 0.75;
 }
 
 .search-button {
   width: 76px;
 
-  border: 1px solid
-    var(--blue);
-
+  border: 1px solid var(--blue);
   background: var(--blue);
-
   color: var(--white);
 
   font-family: var(--font);
-
   font-size: 12px;
-
   font-weight: 600;
 
   cursor: pointer;
@@ -452,33 +405,24 @@ body {
   background: var(--blue-hover);
 }
 
-
 /* ==========================================
    SELECT FILTERS
 ========================================== */
 
 .control-bar select {
   height: 42px;
-
   min-width: 120px;
-
   padding: 0 11px;
 
-  border: 1px solid
-    var(--blue-border);
-
+  border: 1px solid var(--blue-border);
   border-radius: 4px;
 
   outline: none;
-
   background: var(--white);
-
   color: var(--text-blue);
 
   font-family: var(--font);
-
   font-size: 13px;
-
   font-weight: 500;
 
   cursor: pointer;
@@ -488,29 +432,22 @@ body {
   border-color: var(--blue);
 }
 
-
 /* ==========================================
    RESET
 ========================================== */
 
 .reset-button {
   height: 42px;
-
   padding: 0 14px;
 
-  border: 1px solid
-    var(--blue-border);
-
+  border: 1px solid var(--blue-border);
   border-radius: 4px;
 
   background: var(--white);
-
   color: var(--blue);
 
   font-family: var(--font);
-
   font-size: 13px;
-
   font-weight: 600;
 
   cursor: pointer;
@@ -520,7 +457,6 @@ body {
   background: var(--blue-light);
 }
 
-
 /* ==========================================
    SPACER
 ========================================== */
@@ -529,7 +465,6 @@ body {
   flex: 1;
 }
 
-
 /* ==========================================
    ACTION BUTTONS
 ========================================== */
@@ -537,28 +472,21 @@ body {
 .action-button,
 .export-button {
   height: 42px;
-
   padding: 0 15px;
 
   border-radius: 4px;
 
   font-family: var(--font);
-
   font-size: 12px;
-
   font-weight: 600;
 
   cursor: pointer;
-
   white-space: nowrap;
 }
 
 .action-button {
-  border: 1px solid
-    var(--blue-border);
-
+  border: 1px solid var(--blue-border);
   background: var(--white);
-
   color: var(--blue);
 }
 
@@ -568,21 +496,16 @@ body {
 
 .action-button:disabled {
   opacity: 0.65;
-
   cursor: not-allowed;
 }
-
 
 /* ==========================================
    EXCEL
 ========================================== */
 
 .export-button.excel {
-  border: 1px solid
-    var(--green);
-
+  border: 1px solid var(--green);
   background: var(--green);
-
   color: var(--white);
 }
 
@@ -590,17 +513,13 @@ body {
   background: #116b32;
 }
 
-
 /* ==========================================
    PDF
 ========================================== */
 
 .export-button.pdf {
-  border: 1px solid
-    var(--red);
-
+  border: 1px solid var(--red);
   background: var(--red);
-
   color: var(--white);
 }
 
@@ -608,19 +527,15 @@ body {
   background: #b92525;
 }
 
-
 /* ==========================================
    TABLE
 ========================================== */
 
 .records-table {
   width: 100%;
-
   overflow-x: auto;
 
-  border: 1px solid
-    var(--blue-border);
-
+  border: 1px solid var(--blue-border);
   border-radius: 4px;
 
   background: var(--white);
@@ -628,18 +543,14 @@ body {
 
 .records-table table {
   width: 100%;
-
   min-width: 900px;
 
   border-collapse: collapse;
-
   table-layout: auto;
 
   font-family: var(--font);
-
   font-size: 14px;
 }
-
 
 /* ==========================================
    TABLE HEADER
@@ -647,28 +558,21 @@ body {
 
 .records-table thead th {
   height: 48px;
-
   padding: 0 15px;
 
   background: var(--blue);
-
   color: var(--white);
 
-  border-right: 1px solid
-    rgba(255, 255, 255, 0.25);
+  border-right: 1px solid rgba(255, 255, 255, 0.25);
 
   text-align: left;
-
   font-size: 13px;
-
   font-weight: 700;
-
   white-space: nowrap;
 }
 
 .records-table thead th:first-child {
   width: 55px;
-
   text-align: center;
 }
 
@@ -676,25 +580,20 @@ body {
   border-right: none;
 }
 
-
 /* ==========================================
    TABLE ROW
 ========================================== */
 
 .records-table tbody tr {
-  border-bottom: 1px solid
-    var(--blue-border);
-
+  border-bottom: 1px solid var(--blue-border);
   background: var(--white);
 
-  transition:
-    background 0.12s ease;
+  transition: background 0.12s ease;
 }
 
 .records-table tbody tr:hover {
   background: var(--blue-light);
 }
-
 
 /* ==========================================
    TABLE DATA
@@ -702,13 +601,10 @@ body {
 
 .records-table tbody td {
   height: 54px;
-
   padding: 10px 15px;
 
   color: var(--text-blue);
-
   vertical-align: middle;
-
   white-space: nowrap;
 
   font-size: 14px;
@@ -718,21 +614,16 @@ body {
   border-bottom: none;
 }
 
-
 /* ==========================================
    NUMBER
 ========================================== */
 
 .number-column {
   width: 55px;
-
   text-align: center !important;
-
   color: var(--blue) !important;
-
   font-weight: 600;
 }
-
 
 /* ==========================================
    STUDENT NAME
@@ -740,14 +631,10 @@ body {
 
 .name-cell {
   min-width: 230px;
-
   color: var(--text-blue) !important;
-
   font-size: 15px !important;
-
   font-weight: 700;
 }
-
 
 /* ==========================================
    GRADE
@@ -755,24 +642,17 @@ body {
 
 .grade-label {
   display: inline-block;
-
   min-width: 65px;
-
   padding: 5px 9px;
 
   border-radius: 12px;
-
   background: var(--blue-light);
-
   color: var(--blue);
 
   text-align: center;
-
   font-size: 11px;
-
   font-weight: 700;
 }
-
 
 /* ==========================================
    TIME
@@ -780,10 +660,8 @@ body {
 
 .time-cell {
   color: var(--text-blue) !important;
-
   font-size: 14px !important;
 }
-
 
 /* ==========================================
    EMPTY ROW
@@ -791,14 +669,10 @@ body {
 
 .empty-row {
   height: 140px !important;
-
   text-align: center;
-
   color: var(--text-blue-light) !important;
-
   font-size: 14px !important;
 }
-
 
 /* ==========================================
    TABLE FOOTER
@@ -808,16 +682,12 @@ body {
   position: relative;
 
   display: flex;
-
   align-items: center;
-
   justify-content: center;
 
   min-height: 70px;
-
   padding: 10px 0;
 }
-
 
 /* ==========================================
    PAGINATION
@@ -825,34 +695,24 @@ body {
 
 .pagination {
   display: flex;
-
   align-items: center;
-
   justify-content: center;
-
   gap: 5px;
 }
 
 .pagination button {
   min-width: 36px;
-
   height: 36px;
-
   padding: 0 10px;
 
-  border: 1px solid
-    var(--blue-border);
-
+  border: 1px solid var(--blue-border);
   border-radius: 4px;
 
   background: var(--white);
-
   color: var(--blue);
 
   font-family: var(--font);
-
   font-size: 12px;
-
   font-weight: 600;
 
   cursor: pointer;
@@ -860,26 +720,20 @@ body {
 
 .pagination button:hover:not(:disabled) {
   background: var(--blue-light);
-
   border-color: var(--blue);
 }
 
 .pagination button.active {
   background: var(--blue);
-
   border-color: var(--blue);
-
   color: var(--white);
 }
 
 .pagination button:disabled {
   border-color: var(--blue-border);
-
   color: var(--blue-border);
-
   cursor: not-allowed;
 }
-
 
 /* ==========================================
    FOOTER RESULT
@@ -887,20 +741,16 @@ body {
 
 .footer-results {
   position: absolute;
-
   right: 0;
 
   color: var(--text-blue-light);
-
   font-size: 12px;
 }
 
 .footer-results strong {
   color: var(--blue);
-
   font-weight: 700;
 }
-
 
 /* ==========================================
    PURPOSE / USAGE
@@ -908,219 +758,10 @@ body {
 
 .embedded-page {
   width: 100%;
-
   min-height: calc(100vh - 50px);
-
   background: var(--white);
 }
 
-
-/* ==========================================
-   RESPONSIVE - 1400px
-========================================== */
-
-@media (max-width: 1400px) {
-  .admin-sidebar {
-    width: 245px;
-
-    min-width: 245px;
-  }
-
-  .admin-content {
-    padding: 22px 22px 28px;
-  }
-
-  .search-box {
-    width: 350px;
-
-    min-width: 280px;
-  }
-
-  .control-bar {
-    gap: 7px;
-  }
-
-  .control-bar select {
-    min-width: 105px;
-
-    padding-left: 8px;
-
-    padding-right: 8px;
-  }
-
-  .action-button,
-  .export-button {
-    padding-left: 10px;
-
-    padding-right: 10px;
-  }
-}
-
-
-/* ==========================================
-   RESPONSIVE - 1100px
-========================================== */
-
-@media (max-width: 1100px) {
-  .admin-sidebar {
-    width: 225px;
-
-    min-width: 225px;
-  }
-
-  .admin-content {
-    padding: 18px;
-  }
-
-  .control-bar {
-    flex-wrap: wrap;
-  }
-
-  .search-box {
-    width: 100%;
-
-    max-width: 500px;
-  }
-
-  .control-spacer {
-    display: none;
-  }
-}
-
-
-/* ==========================================
-   RESPONSIVE - 800px
-========================================== */
-
-@media (max-width: 800px) {
-  .admin-panel {
-    flex-direction: column;
-  }
-
-  .admin-sidebar {
-    position: static;
-
-    width: 100%;
-
-    min-width: 100%;
-
-    min-height: auto;
-  }
-
-  .sidebar-brand {
-    padding: 18px;
-  }
-
-  .sidebar-menu {
-    display: flex;
-
-    padding: 0;
-  }
-
-  .sidebar-menu .menu-title {
-    display: none;
-  }
-
-  .menu-item {
-    width: 50%;
-
-    min-height: 48px;
-  }
-
-  .sidebar-analytics {
-    display: none;
-  }
-
-  .admin-content {
-    width: 100%;
-
-    padding: 18px;
-  }
-
-  .control-bar {
-    display: grid;
-
-    grid-template-columns:
-      1fr 1fr;
-
-    gap: 8px;
-  }
-
-  .search-box {
-    width: 100%;
-
-    max-width: none;
-
-    grid-column: span 2;
-  }
-
-  .control-bar select,
-  .reset-button,
-  .action-button,
-  .export-button {
-    width: 100%;
-  }
-
-  .table-footer {
-    flex-direction: column;
-
-    gap: 10px;
-
-    min-height: 90px;
-  }
-
-  .footer-results {
-    position: static;
-  }
-}
-
-
-/* ==========================================
-   RESPONSIVE - 500px
-========================================== */
-
-@media (max-width: 500px) {
-  .admin-content {
-    padding: 13px;
-  }
-
-  .top-bar {
-    align-items: flex-start;
-
-    flex-direction: column;
-
-    gap: 7px;
-
-    height: auto;
-  }
-
-  .control-bar {
-    grid-template-columns: 1fr;
-  }
-
-  .search-box {
-    grid-column: span 1;
-
-    height: 44px;
-  }
-
-  .control-bar select,
-  .reset-button,
-  .action-button,
-  .export-button {
-    height: 44px;
-  }
-
-  .pagination {
-    flex-wrap: wrap;
-  }
-
-  .pagination button {
-    min-width: 34px;
-
-    height: 34px;
-  }
-}
 /* ==========================================
    ADMIN LOGIN
 ========================================== */
@@ -1128,9 +769,11 @@ body {
 .admin-login-page {
   min-height: 100vh;
   background: #eef5fb;
+
   display: flex;
   align-items: center;
   justify-content: center;
+
   padding: 20px;
   font-family: Arial, Helvetica, sans-serif;
 }
@@ -1138,10 +781,13 @@ body {
 .admin-login-card {
   width: 100%;
   max-width: 400px;
+
   background: #ffffff;
   border: 1px solid #c9d9e8;
   border-radius: 10px;
+
   padding: 35px;
+
   box-shadow: 0 8px 30px rgba(11, 42, 74, 0.12);
 }
 
@@ -1179,8 +825,10 @@ body {
   box-sizing: border-box;
   height: 45px;
   padding: 0 13px;
+
   border: 1px solid #c9d9e8;
   border-radius: 6px;
+
   outline: none;
   font-size: 14px;
   font-family: Arial, Helvetica, sans-serif;
@@ -1193,22 +841,29 @@ body {
 .admin-login-error {
   background: #fdeeee;
   color: #d32f2f;
+
   border: 1px solid #f1bcbc;
   border-radius: 6px;
+
   padding: 10px 12px;
   margin-bottom: 18px;
+
   font-size: 13px;
 }
 
 .admin-login-button {
   width: 100%;
   height: 45px;
+
   border: none;
   border-radius: 6px;
+
   background: #0b2a4a;
   color: #ffffff;
+
   font-size: 15px;
   font-weight: 600;
+
   cursor: pointer;
   font-family: Arial, Helvetica, sans-serif;
 }
@@ -1217,46 +872,207 @@ body {
   background: #123e68;
 }
 
-
 /* ==========================================
-   LOGOUT
+   RESPONSIVE - 1400px
 ========================================== */
 
-.admin-sidebar {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
+@media (max-width: 1400px) {
+  .admin-sidebar {
+    width: 245px;
+    min-width: 245px;
+  }
+
+  .admin-content {
+    width: calc(100% - 245px);
+    margin-left: 245px;
+    padding: 22px 22px 28px;
+  }
+
+  .search-box {
+    width: 350px;
+    min-width: 280px;
+  }
+
+  .control-bar {
+    gap: 7px;
+  }
+
+  .control-bar select {
+    min-width: 105px;
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  .action-button,
+  .export-button {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
 }
 
-.sidebar-logout {
-  margin-top: auto;
-  padding: 20px;
+/* ==========================================
+   RESPONSIVE - 1100px
+========================================== */
+
+@media (max-width: 1100px) {
+  .admin-sidebar {
+    width: 225px;
+    min-width: 225px;
+  }
+
+  .admin-content {
+    width: calc(100% - 225px);
+    margin-left: 225px;
+    padding: 18px;
+  }
+
+  .control-bar {
+    flex-wrap: wrap;
+  }
+
+  .search-box {
+    width: 100%;
+    max-width: 500px;
+  }
+
+  .control-spacer {
+    display: none;
+  }
 }
 
-.logout-button {
-  width: 100%;
-  min-height: 45px;
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  border-radius: 6px;
-  background: transparent;
-  color: #ffffff;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  font-family: Arial, Helvetica, sans-serif;
+/* ==========================================
+   RESPONSIVE - 800px
+========================================== */
+
+@media (max-width: 800px) {
+  .admin-panel {
+    flex-direction: column;
+  }
+
+  .admin-sidebar {
+    position: relative;
+    top: auto;
+    left: auto;
+
+    width: 100%;
+    min-width: 100%;
+    height: auto;
+    min-height: auto;
+
+    overflow: visible;
+  }
+
+  .sidebar-brand {
+    padding: 18px;
+  }
+
+  .sidebar-menu {
+    display: flex;
+    padding: 0;
+  }
+
+  .sidebar-menu .menu-title {
+    display: none;
+  }
+
+  .menu-item {
+    width: 50%;
+    min-height: 48px;
+  }
+
+  .sidebar-analytics {
+    display: none;
+  }
+
+  .admin-content {
+    width: 100%;
+    margin-left: 0;
+    min-height: auto;
+    padding: 18px;
+  }
+
+  .control-bar {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .search-box {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+    grid-column: span 2;
+  }
+
+  .control-bar select,
+  .reset-button,
+  .action-button,
+  .export-button {
+    width: 100%;
+  }
+
+  .table-footer {
+    flex-direction: column;
+    gap: 10px;
+    min-height: 90px;
+  }
+
+  .footer-results {
+    position: static;
+  }
+
+  .sidebar-logout {
+    margin-top: 0;
+  }
 }
 
-.logout-button:hover {
-  background: rgba(255, 255, 255, 0.1);
-}
+/* ==========================================
+   RESPONSIVE - 500px
+========================================== */
 
+@media (max-width: 500px) {
+  .admin-content {
+    padding: 13px;
+  }
+
+  .top-bar {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 7px;
+    height: auto;
+  }
+
+  .control-bar {
+    grid-template-columns: 1fr;
+  }
+
+  .search-box {
+    grid-column: span 1;
+    height: 44px;
+  }
+
+  .control-bar select,
+  .reset-button,
+  .action-button,
+  .export-button {
+    height: 44px;
+  }
+
+  .pagination {
+    flex-wrap: wrap;
+  }
+
+  .pagination button {
+    min-width: 34px;
+    height: 34px;
+  }
+}
 
 /* ==========================================
    MOBILE LOGIN
 ========================================== */
 
 @media (max-width: 600px) {
-
   .admin-login-page {
     padding: 15px;
   }
@@ -1268,5 +1084,4 @@ body {
   .admin-login-header h1 {
     font-size: 24px;
   }
-
 }
