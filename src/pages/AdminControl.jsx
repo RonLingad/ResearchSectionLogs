@@ -531,129 +531,280 @@ export default function AdminControl() {
   // PDF EXPORT
   // ==========================================
 
-  function exportPDF() {
-    if (
-      filteredLogs.length === 0
-    ) {
-      alert(
-        "No data available to export."
-      );
+ 
+// ==========================================
+// PDF EXPORT
+// ==========================================
 
-      return;
-    }
+function exportPDF() {
+  if (filteredLogs.length === 0) {
+    alert("No data available to export.");
+    return;
+  }
 
-    const doc =
-      new jsPDF();
+  function toTitleCase(value) {
+  if (!value) return "N/A";
 
-    doc.setFontSize(16);
+  return cleanName(value)
+    .toLowerCase()
+    .replace(/\b\p{L}/gu, (letter) => letter.toUpperCase());
+}
 
-    doc.text(
-      "HOLY FAMILY ACADEMY",
-      105,
-      15,
-      {
-        align: "center",
-      }
-    );
+  const doc = new jsPDF({
+    orientation: "landscape",
+    unit: "mm",
+    format: "a4",
+  });
 
-    doc.setFontSize(11);
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
 
-    doc.text(
-      "Internet & Research Section",
-      105,
-      22,
-      {
-        align: "center",
-      }
-    );
+  // ==========================================
+  // DATE PARAMETERS
+  // ==========================================
 
-    doc.setFontSize(10);
+  const monthNames = [
+    "January", "February", "March",
+    "April", "May", "June",
+    "July", "August", "September",
+    "October", "November", "December"
+  ];
 
-    doc.text(
-      `Total Records: ${filteredLogs.length}`,
-      14,
-      32
-    );
+  const selectedMonth =
+    monthFilter === "All"
+      ? "All Months"
+      : monthNames[Number(monthFilter) - 1];
 
-    doc.text(
-      `Peak Usage: ${analytics.peakText}`,
-      14,
-      38
-    );
+  const selectedYear =
+    yearFilter === "All"
+      ? "All Years"
+      : yearFilter;
 
-    const tableData =
-      filteredLogs.map(
-        (log, index) => {
-          const sessionIn =
-            log.session_in ||
-            log.created_at;
+  const selectedGrade =
+    gradeFilter === "All"
+      ? "All Grades"
+      : gradeFilter;
 
-          return [
-            index + 1,
+  // Determine actual date coverage of exported records
+  const recordDates = filteredLogs
+    .map((log) => log.session_in || log.created_at)
+    .filter(Boolean)
+    .map((date) => new Date(date))
+    .filter((date) => !isNaN(date.getTime()))
+    .sort((a, b) => a - b);
 
-            // CLEAN NAME
-            cleanName(
-              log.fullname
-            ),
+  const dateRange =
+    recordDates.length > 0
+      ? `${recordDates[0].toLocaleDateString("en-PH", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        })} - ${recordDates[recordDates.length - 1].toLocaleDateString(
+          "en-PH",
+          {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          }
+        )}`
+      : "No date available";
 
-            // CLEAN GRADE
-            cleanGrade(
-              log.grade
-            ),
+  const exportDate = new Date().toLocaleString("en-PH", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 
-            formatDate(
-              sessionIn
-            ),
+  // ==========================================
+  // REPORT HEADER
+  // ==========================================
 
-            formatTime(
-              sessionIn
-            ),
+  doc.setTextColor(30, 30, 30);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(13);
 
-            formatTime(
-              log.session_out
-            ),
-          ];
+  doc.text("HOLY FAMILY ACADEMY", pageWidth / 2, 10, {
+    align: "center",
+  });
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+
+  doc.text("Internet & Research Section", pageWidth / 2, 15, {
+    align: "center",
+  });
+
+  // Thin divider
+  doc.setDrawColor(190, 190, 190);
+  doc.setLineWidth(0.2);
+  doc.line(8, 18, pageWidth - 8, 18);
+
+  // ==========================================
+  // REPORT PARAMETERS
+  // ==========================================
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.setTextColor(40, 40, 40);
+
+  doc.text("RECORD PARAMETERS", 8, 23);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7);
+
+  doc.text(`Date Range: ${dateRange}`, 8, 28);
+  doc.text(`Month: ${selectedMonth}`, 85, 28);
+  doc.text(`Year: ${selectedYear}`, 150, 28);
+
+  doc.text(`Grade: ${selectedGrade}`, 8, 33);
+  doc.text(`Total Records: ${filteredLogs.length}`, 85, 33);
+  doc.text(`Peak Usage: ${analytics.peakText}`, 150, 33);
+
+  doc.setTextColor(110, 110, 110);
+  doc.text(`Generated: ${exportDate}`, pageWidth - 8, 33, {
+    align: "right",
+  });
+
+  // ==========================================
+  // TABLE DATA
+  // ==========================================
+
+  const tableData = filteredLogs.map((log, index) => {
+    const sessionIn = log.session_in || log.created_at;
+
+    return [
+      index + 1,
+      toTitleCase(log.fullname),
+      cleanGrade(log.grade),
+      formatDate(sessionIn),
+      formatTime(sessionIn),
+      formatTime(log.session_out),
+    ];
+  });
+
+  // ==========================================
+  // SIMPLE PDF TABLE
+  // ==========================================
+
+  autoTable(doc, {
+    startY: 38,
+
+    head: [[
+      "#",
+      "Student Name",
+      "Grade",
+      "Date",
+      "Session In",
+      "Session Out",
+    ]],
+
+    body: tableData,
+
+    theme: "grid",
+
+    margin: {
+      top: 8,
+      left: 12,
+      right: 8,
+      bottom: 12,
+    },
+
+    styles: {
+      font: "Verdana",
+      fontSize: 8,
+      cellPadding: 1,
+      textColor: [0, 0, 0],
+      lineColor: [220, 220, 220],
+      lineWidth: 0.1,
+      valign: "middle",
+      overflow: "ellipsize",
+      minCellHeight: 5,
+    },
+
+    headStyles: {
+      fillColor: [235, 240, 245],
+      textColor: [0, 0, 0],
+      fontStyle: "bold",
+      fontSize: 9,
+      cellPadding: 1.5,
+      lineColor: [200, 205, 210],
+      lineWidth: 0.1,
+      halign: "center",
+    },
+
+    bodyStyles: {
+      fillColor: [255, 255, 255],
+    },
+
+    alternateRowStyles: {
+      fillColor: [248, 249, 250],
+    },
+
+    columnStyles: {
+      0: {
+        cellWidth: 10,
+        halign: "center",
+      },
+      1: {
+        cellWidth: 95,
+        halign: "left",
+      },
+      2: {
+        cellWidth: 30,
+        halign: "center",
+      },
+      3: {
+        cellWidth: 45,
+        halign: "center",
+      },
+      4: {
+        cellWidth: 40,
+        halign: "center",
+      },
+      5: {
+        cellWidth: 40,
+        halign: "center",
+      },
+    },
+
+    // Repeat header on every page
+    showHead: "everyPage",
+
+    // ==========================================
+    // PAGE NUMBER
+    // ==========================================
+
+    didDrawPage: () => {
+      const pageNumber =
+        doc.internal.getCurrentPageInfo().pageNumber;
+
+      const pageCount =
+        doc.internal.getNumberOfPages();
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7);
+      doc.setTextColor(120, 120, 120);
+
+      doc.text(
+        `Internet & Research Records | Page ${pageNumber} of ${pageCount}`,
+        pageWidth - 8,
+        pageHeight - 5,
+        {
+          align: "right",
         }
       );
+    },
+  });
 
-    autoTable(doc, {
-      startY: 45,
+  // ==========================================
+  // SAVE PDF
+  // ==========================================
 
-      head: [
-        [
-          "#",
-          "Student Name",
-          "Grade",
-          "Date",
-          "Session In",
-          "Session Out",
-        ],
-      ],
+  doc.save("Internet_Research_Report.pdf");
+}
 
-      body: tableData,
-
-      theme: "grid",
-
-      styles: {
-        fontSize: 9,
-        cellPadding: 3,
-        textColor: [0, 0, 0],
-      },
-
-      headStyles: {
-        fontSize: 9,
-        textColor: [255, 255, 255],
-      },
-
-      bodyStyles: {
-        textColor: [0, 0, 0],
-      },
-    });
-
-    doc.save(
-      "Internet_Research_Report.pdf"
-    );
-  }
 
   // ==========================================
   // SIDEBAR MENU ITEM CLASS
