@@ -1,3 +1,4 @@
+
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
 import jsPDF from "jspdf";
@@ -27,6 +28,19 @@ function parseDate(value) {
   const date = new Date(value);
 
   return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function formatHour(hour) {
+  const formatTime = (value, minute) => {
+    const suffix = value >= 12 ? "PM" : "AM";
+    const displayHour = value % 12 || 12;
+
+    return `${displayHour}:${String(minute).padStart(2, "0")} ${suffix}`;
+  };
+
+  const nextHour = (hour + 1) % 24;
+
+  return `${formatTime(hour, 0)} - ${formatTime(nextHour, 0)}`;
 }
 
 export default function RecordsData() {
@@ -120,7 +134,48 @@ export default function RecordsData() {
   }, [logs, viewMode, selectedYear]);
 
   /* =========================================================
-     SUMMARY
+     PEAK HOURS
+  ========================================================= */
+
+  const peakHours = useMemo(() => {
+    const hourlyCounts = Array(24).fill(0);
+
+    logs.forEach((log) => {
+      const date = parseDate(log.session_in);
+
+      if (!date) return;
+
+      const year = date.getFullYear();
+
+      const matchesPeriod =
+        viewMode === "month"
+          ? year === Number(selectedYear)
+          : YEARS.includes(year);
+
+      if (!matchesPeriod) return;
+
+      hourlyCounts[date.getHours()] += 1;
+    });
+
+    return hourlyCounts
+      .map((value, hour) => ({
+        hour,
+        label: formatHour(hour),
+        value,
+      }))
+      .filter((item) => item.value > 0)
+      .sort((a, b) => {
+        if (b.value !== a.value) {
+          return b.value - a.value;
+        }
+
+        return a.hour - b.hour;
+      })
+      .slice(0, 3);
+  }, [logs, viewMode, selectedYear]);
+
+  /* =========================================================
+     SUMMARY - DASHBOARD
   ========================================================= */
 
   const summary = useMemo(() => {
@@ -170,7 +225,7 @@ export default function RecordsData() {
   }, [graphData]);
 
   /* =========================================================
-     CONCLUSION FOR PDF
+     CONCLUSION
   ========================================================= */
 
   const conclusion = useMemo(() => {
@@ -230,100 +285,81 @@ export default function RecordsData() {
       const margin = 14;
       const contentWidth = pageWidth - margin * 2;
 
-      /* HEADER */
+      /* =====================================================
+         COMPACT CENTERED HEADER
+      ===================================================== */
 
-      pdf.setFillColor(11, 42, 74);
-      pdf.rect(0, 0, pageWidth, 31, "F");
-
-      pdf.setTextColor(255, 255, 255);
+      pdf.setTextColor(0, 0, 0);
 
       pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(14);
-      pdf.text(
-        "Holy Family Academy Angeles City",
-        margin,
-        9
-      );
+      pdf.setFontSize(11);
 
-      pdf.setFontSize(10);
-      pdf.text("Grade School IMC", margin, 16);
+      pdf.text(
+        "Holy Family Academy",
+        pageWidth / 2,
+        11,
+        { align: "center" }
+      );
 
       pdf.setFont("helvetica", "normal");
       pdf.setFontSize(9);
-      pdf.text("Record Data Report", margin, 23);
 
-      const period =
+      pdf.text(
+        "Angeles City",
+        pageWidth / 2,
+        16,
+        { align: "center" }
+      );
+
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(10.5);
+
+      pdf.text(
+        "STATISTICAL REPRESENTATION ON THE ACTIVITY ON INTERNET",
+        pageWidth / 2,
+        24,
+        { align: "center" }
+      );
+
+      pdf.text(
+        "AND RESEARCH SECTION",
+        pageWidth / 2,
+        29,
+        { align: "center" }
+      );
+
+      pdf.setFontSize(10);
+
+      const periodTitle =
         viewMode === "month"
-          ? `Monthly Usage - ${selectedYear}`
-          : "Yearly Usage - 2026 to 2030";
+          ? `FOR THE YEAR ${selectedYear}`
+          : "FOR THE YEARS 2026 TO 2030";
 
-      pdf.setFontSize(8);
-      pdf.text(period, margin, 28);
+      pdf.text(
+        periodTitle,
+        pageWidth / 2,
+        35,
+        { align: "center" }
+      );
 
-      /* SUMMARY */
+      pdf.setDrawColor(0, 0, 0);
+      pdf.setLineWidth(0.3);
 
-      let y = 41;
+      pdf.line(
+        margin,
+        39,
+        pageWidth - margin,
+        39
+      );
 
-      pdf.setTextColor(0, 0, 0);
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(11);
-      pdf.text("Summary", margin, y);
+      let y = 46;
 
-      y += 6;
-
-      const gap = 4;
-
-      const cardWidth =
-        (contentWidth - gap * 3) / 4;
-
-      const cardHeight = 24;
-
-      const cards = [
-        ["Total Records", String(summary.total)],
-        ["Highest Period", summary.highest.label],
-        ["Highest Total", String(summary.highest.value)],
-        ["Average", summary.average.toFixed(1)],
-      ];
-
-      cards.forEach((card, index) => {
-        const x =
-          margin + index * (cardWidth + gap);
-
-        pdf.setDrawColor(197, 214, 230);
-        pdf.setFillColor(255, 255, 255);
-
-        pdf.roundedRect(
-          x,
-          y,
-          cardWidth,
-          cardHeight,
-          2,
-          2,
-          "FD"
-        );
-
-        pdf.setFont("helvetica", "normal");
-        pdf.setFontSize(7);
-        pdf.setTextColor(92, 120, 146);
-
-        pdf.text(card[0], x + 4, y + 7);
-
-        pdf.setFont("helvetica", "bold");
-        pdf.setFontSize(
-          card[0] === "Highest Period" ? 10 : 13
-        );
-
-        pdf.setTextColor(11, 42, 74);
-
-        pdf.text(card[1], x + 4, y + 18);
-      });
-
-      y += cardHeight + 10;
-
-      /* GRAPH */
+      /* =====================================================
+         VERTICAL COLUMN GRAPH
+      ===================================================== */
 
       pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(11);
+      pdf.setFontSize(10);
       pdf.setTextColor(0, 0, 0);
 
       pdf.text(
@@ -334,142 +370,177 @@ export default function RecordsData() {
         y
       );
 
-      y += 7;
+      y += 6;
 
-      const labelWidth =
-        viewMode === "month" ? 34 : 22;
+      const chartLeft = margin + 12;
+      const chartRight = pageWidth - margin - 4;
+      const chartWidth = chartRight - chartLeft;
 
-      const valueWidth = 15;
+      const chartHeight =
+        viewMode === "month" ? 110 : 110;
 
-      const barWidth =
-        contentWidth -
-        labelWidth -
-        valueWidth;
-
-      const graphHeight =
-        viewMode === "month" ? 78 : 48;
-
-      const rowHeight =
-        graphHeight / graphData.length;
+      const chartTop = y;
+      const chartBottom = chartTop + chartHeight;
 
       const maxValue = Math.max(
         ...graphData.map((item) => item.value),
         1
       );
 
-      graphData.forEach((item, index) => {
-        const centerY =
-          y +
-          rowHeight * index +
-          rowHeight / 2;
+      const roundedMax =
+        Math.ceil(maxValue / 5) * 5 || 5;
 
-        pdf.setFont("helvetica", "normal");
-        pdf.setFontSize(9);
-        pdf.setTextColor(0, 0, 0);
+      const tickCount = 5;
+
+      /* Grid lines and Y-axis labels */
+
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(6.5);
+      pdf.setTextColor(80, 80, 80);
+
+      for (let i = 0; i <= tickCount; i++) {
+        const value =
+          (roundedMax / tickCount) * i;
+
+        const gridY =
+          chartBottom -
+          (chartHeight / tickCount) * i;
+
+        pdf.setDrawColor(220, 225, 230);
+        pdf.setLineWidth(0.2);
+
+        pdf.line(
+          chartLeft,
+          gridY,
+          chartRight,
+          gridY
+        );
 
         pdf.text(
-          item.label,
-          margin,
-          centerY + 1.5
+          String(Math.round(value)),
+          chartLeft - 3,
+          gridY + 1,
+          { align: "right" }
+        );
+      }
+
+      /* Axes */
+
+      pdf.setDrawColor(70, 70, 70);
+      pdf.setLineWidth(0.3);
+
+      pdf.line(
+        chartLeft,
+        chartTop,
+        chartLeft,
+        chartBottom
+      );
+
+      pdf.line(
+        chartLeft,
+        chartBottom,
+        chartRight,
+        chartBottom
+      );
+
+      /* Vertical bars */
+
+      const slotWidth =
+        chartWidth / graphData.length;
+
+      const barWidth =
+        Math.min(
+          viewMode === "month" ? 9 : 17,
+          slotWidth * 0.62
         );
 
-        const barX =
-          margin + labelWidth;
+      graphData.forEach((item, index) => {
+        const centerX =
+          chartLeft +
+          slotWidth * index +
+          slotWidth / 2;
 
         const barHeight =
-          viewMode === "month" ? 4.5 : 6;
+          (item.value / roundedMax) * chartHeight;
+
+        const barX =
+          centerX - barWidth / 2;
 
         const barY =
-          centerY - barHeight / 2;
+          chartBottom - barHeight;
 
-        pdf.setFillColor(238, 242, 246);
-
-        pdf.roundedRect(
-          barX,
-          barY,
-          barWidth,
-          barHeight,
-          1,
-          1,
-          "F"
-        );
-
-        const actualWidth =
-          (item.value / maxValue) *
-          barWidth;
-
-        if (actualWidth > 0) {
+        if (item.value > 0) {
           pdf.setFillColor(21, 101, 192);
 
-          pdf.roundedRect(
+          pdf.rect(
             barX,
             barY,
-            actualWidth,
+            barWidth,
             barHeight,
-            1,
-            1,
             "F"
           );
         }
 
+        /* Values */
+
         pdf.setFont("helvetica", "bold");
-        pdf.setFontSize(9);
+        pdf.setFontSize(6.5);
+        pdf.setTextColor(0, 0, 0);
+
+        const valueY =
+          item.value > 0
+            ? Math.max(chartTop - 1, barY - 1.5)
+            : chartBottom - 2;
 
         pdf.text(
           String(item.value),
-          barX + barWidth + 3,
-          centerY + 1.5
+          centerX,
+          valueY,
+          { align: "center" }
+        );
+
+        /* X-axis labels */
+
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(
+          viewMode === "month" ? 6 : 7
+        );
+
+        const label =
+          viewMode === "month"
+            ? item.label.substring(0, 3)
+            : item.label;
+
+        pdf.text(
+          label,
+          centerX,
+          chartBottom + 4,
+          { align: "center" }
         );
       });
 
-      y += graphHeight + 9;
+      y = chartBottom + 11;
 
-      /* CONCLUSION */
-
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(11);
-      pdf.text("Conclusion", margin, y);
-
-      y += 6;
-
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(12);
-
-      const conclusionLines =
-        pdf.splitTextToSize(
-          conclusion,
-          contentWidth
-        );
-
-      const lineHeight = 6.35;
-
-      conclusionLines.forEach((line) => {
-        pdf.text(line, margin, y);
-        y += lineHeight;
-      });
-
-      /* TABLE */
-
-      y += 3;
+      /* =====================================================
+         COMPACT PEAK HOURS
+      ===================================================== */
 
       pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(10);
+      pdf.setFontSize(9.5);
+      pdf.setTextColor(0, 0, 0);
 
-      pdf.text(
-        "Record Totals",
-        margin,
-        y
-      );
+      pdf.text("Peak Hours", margin, y);
 
-      y += 3;
+      y += 2;
 
-      const tableRows = graphData.map(
-        (item, index) => [
-          index + 1,
-          item.label,
-          item.value,
-        ]
-      );
+      const peakRows =
+        peakHours.length > 0
+          ? peakHours.map((item, index) => [
+              index + 1,
+              item.label,
+              item.value,
+            ])
+          : [["—", "No available data", 0]];
 
       autoTable(pdf, {
         startY: y,
@@ -481,24 +552,23 @@ export default function RecordsData() {
 
         head: [
           [
-            "No.",
-            viewMode === "month"
-              ? "Month"
-              : "Year",
+            "Rank",
+            "Time Period",
             "Total Records",
           ],
         ],
 
-        body: tableRows,
+        body: peakRows,
 
         theme: "grid",
 
         styles: {
           font: "helvetica",
-          fontSize: 8,
-          cellPadding: 2,
+          fontSize: 7,
+          cellPadding: 1.2,
+          minCellHeight: 5,
           textColor: [0, 0, 0],
-          lineColor: [197, 214, 230],
+          lineColor: [190, 190, 190],
           lineWidth: 0.2,
         },
 
@@ -510,66 +580,132 @@ export default function RecordsData() {
 
         columnStyles: {
           0: {
-            cellWidth: 18,
+            cellWidth: 25,
             halign: "center",
           },
-
           1: {
             cellWidth: 100,
           },
-
           2: {
-            cellWidth: 50,
+            cellWidth: 43,
             halign: "center",
           },
         },
       });
 
-      /* FOOTER */
+      y = pdf.lastAutoTable.finalY + 5;
 
-      const pageCount =
-        pdf.getNumberOfPages();
+      /* =====================================================
+         CONCLUSION
+      ===================================================== */
 
-      for (
-        let page = 1;
-        page <= pageCount;
-        page++
-      ) {
-        pdf.setPage(page);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(10);
+      pdf.setTextColor(0, 0, 0);
 
-        pdf.setFont(
-          "helvetica",
-          "normal"
+      pdf.text("Conclusion", margin, y);
+
+      y += 5;
+
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(9.5);
+
+      const conclusionLines = pdf.splitTextToSize(
+        conclusion,
+        contentWidth
+      );
+
+      const lineHeight = 4.5;
+
+      conclusionLines.forEach((line) => {
+        pdf.text(line, margin, y);
+        y += lineHeight;
+      });
+
+      /* =====================================================
+         SIGNATURES AND POSITIONS
+      ===================================================== */
+
+      y += 10;
+
+      const signatureWidth = 65;
+      const signatureGap = 25;
+
+      const totalSignatureWidth =
+        signatureWidth * 2 + signatureGap;
+
+      const signatureStartX =
+        (pageWidth - totalSignatureWidth) / 2;
+
+      const signatures = [
+        {
+          name: "Airon Lingad",
+          position: "Library IT Staff",
+        },
+        {
+          name: "Remedios Baking",
+          position: "IMC Coordinator",
+        },
+      ];
+
+      signatures.forEach((person, index) => {
+        const x =
+          signatureStartX +
+          index * (signatureWidth + signatureGap);
+
+        const centerX =
+          x + signatureWidth / 2;
+
+        pdf.setDrawColor(0, 0, 0);
+        pdf.setLineWidth(0.3);
+
+        pdf.line(
+          x,
+          y + 4,
+          x + signatureWidth,
+          y + 4
         );
 
-        pdf.setFontSize(8);
-
-        pdf.setTextColor(
-          90,
-          90,
-          90
-        );
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(9.5);
+        pdf.setTextColor(0, 0, 0);
 
         pdf.text(
-          "Grade School IMC - Record Data Report",
-          pageWidth / 2,
-          pageHeight - 7,
-          {
-            align: "center",
-          }
+          person.name,
+          centerX,
+          y + 3,
+          { align: "center" }
         );
+
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(8.5);
 
         pdf.text(
-          `Page ${page} of ${pageCount}`,
-          pageWidth - margin,
-          pageHeight - 7,
-          {
-            align: "right",
-          }
+          person.position,
+          centerX,
+          y + 9,
+          { align: "center" }
         );
-      }
+      });
 
-      /* SAVE */
+      /* =====================================================
+         FOOTER - ONE PAGE
+      ===================================================== */
+
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(8);
+      pdf.setTextColor(90, 90, 90);
+
+      pdf.text(
+        "Grade School IMC - Record Data Report",
+        pageWidth / 2,
+        pageHeight - 7,
+        { align: "center" }
+      );
+
+      /* =====================================================
+         SAVE
+      ===================================================== */
 
       const filename =
         viewMode === "month"
@@ -578,14 +714,9 @@ export default function RecordsData() {
 
       pdf.save(filename);
     } catch (error) {
-      console.error(
-        "PDF export error:",
-        error
-      );
+      console.error("PDF export error:", error);
 
-      alert(
-        "Unable to export the PDF report."
-      );
+      alert("Unable to export the PDF report.");
     } finally {
       setExporting(false);
     }
@@ -596,9 +727,7 @@ export default function RecordsData() {
   ========================================================= */
 
   const maxGraphValue = Math.max(
-    ...graphData.map(
-      (item) => item.value
-    ),
+    ...graphData.map((item) => item.value),
     1
   );
 
@@ -618,17 +747,10 @@ export default function RecordsData() {
 
           <select
             value={viewMode}
-            onChange={(e) =>
-              setViewMode(e.target.value)
-            }
+            onChange={(e) => setViewMode(e.target.value)}
           >
-            <option value="month">
-              Month
-            </option>
-
-            <option value="year">
-              Year
-            </option>
+            <option value="month">Month</option>
+            <option value="year">Year</option>
           </select>
         </div>
 
@@ -638,15 +760,10 @@ export default function RecordsData() {
 
             <select
               value={selectedYear}
-              onChange={(e) =>
-                setSelectedYear(e.target.value)
-              }
+              onChange={(e) => setSelectedYear(e.target.value)}
             >
               {YEARS.map((year) => (
-                <option
-                  key={year}
-                  value={year}
-                >
+                <option key={year} value={year}>
                   {year}
                 </option>
               ))}
@@ -706,9 +823,7 @@ export default function RecordsData() {
 
             {graphData.map((item) => {
               const width =
-                (item.value /
-                  maxGraphValue) *
-                100;
+                (item.value / maxGraphValue) * 100;
 
               return (
                 <div
@@ -740,7 +855,7 @@ export default function RecordsData() {
 
       </section>
 
-      {/* SUMMARY */}
+      {/* DASHBOARD SUMMARY */}
 
       <section className="records-data-summary-section">
 
@@ -758,10 +873,7 @@ export default function RecordsData() {
 
           <div className="records-data-summary-card">
             <span>Total Records</span>
-
-            <strong>
-              {summary.total}
-            </strong>
+            <strong>{summary.total}</strong>
           </div>
 
           <div className="records-data-summary-card">
@@ -774,10 +886,7 @@ export default function RecordsData() {
 
           <div className="records-data-summary-card">
             <span>Highest Total</span>
-
-            <strong>
-              {summary.highest.value}
-            </strong>
+            <strong>{summary.highest.value}</strong>
           </div>
 
           <div className="records-data-summary-card">
@@ -790,10 +899,7 @@ export default function RecordsData() {
 
           <div className="records-data-summary-card">
             <span>Average</span>
-
-            <strong>
-              {summary.average.toFixed(1)}
-            </strong>
+            <strong>{summary.average.toFixed(1)}</strong>
           </div>
 
         </div>
@@ -822,9 +928,7 @@ export default function RecordsData() {
             summary.total === 0
           }
         >
-          {exporting
-            ? "Exporting..."
-            : "Export PDF"}
+          {exporting ? "Exporting..." : "Export PDF"}
         </button>
 
       </div>

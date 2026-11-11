@@ -1,3 +1,4 @@
+
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "../lib/supabase";
 import * as XLSX from "xlsx";
@@ -348,6 +349,33 @@ export default function Purpose() {
   }, [selectedMonth, selectedYear]);
 
   /* =====================================================
+     FORMAL PDF REPORT HEADING
+  ===================================================== */
+
+  const reportHeading = useMemo(() => {
+    if (selectedMonth !== "all" && selectedYear !== "all") {
+      return `FOR THE MONTH OF ${getMonthName(
+        selectedMonth
+      ).toUpperCase()} ${selectedYear}`;
+    }
+
+    if (selectedMonth !== "all" && selectedYear === "all") {
+      return `FOR THE MONTH OF ${getMonthName(
+        selectedMonth
+      ).toUpperCase()} ACROSS ALL YEARS`;
+    }
+
+    if (selectedMonth === "all" && selectedYear !== "all") {
+      return `FOR ALL MONTHS OF ${selectedYear}`;
+    }
+
+    return "FOR ALL MONTHS ACROSS ALL YEARS";
+  }, [selectedMonth, selectedYear]);
+
+  const reportTitle =
+    "STATISTICAL REPORT ON INTERNET AND RESEARCH SECTION ACTIVITIES";
+
+  /* =====================================================
      CONCLUSION
   ===================================================== */
 
@@ -624,9 +652,6 @@ export default function Purpose() {
       const margin = 16;
       const contentWidth = pageWidth - margin * 2;
       const footerY = pageHeight - 9;
-      const bodyBottom = pageHeight - 22;
-
-      /* STANDARD TEXT SETTINGS */
 
       const setBodyFont = (size = 10) => {
         pdf.setFont("helvetica", "normal");
@@ -634,9 +659,11 @@ export default function Purpose() {
         pdf.setTextColor(0, 0, 0);
       };
 
-      /* FOOTER ON EVERY PAGE */
+      /* =================================================
+         FOOTER
+      ================================================= */
 
-      const addFooter = (pageNumber, totalPages) => {
+      const addFooter = (pageNumber, totalPages, showNumber = true) => {
         pdf.setDrawColor(180, 180, 180);
         pdf.setLineWidth(0.2);
 
@@ -655,89 +682,98 @@ export default function Purpose() {
           footerY
         );
 
-        pdf.text(
-          `Page ${pageNumber} of ${totalPages}`,
-          pageWidth - margin,
-          footerY,
-          { align: "right" }
-        );
+        if (showNumber) {
+          pdf.text(
+            `Page ${pageNumber} of ${totalPages}`,
+            pageWidth - margin,
+            footerY,
+            { align: "right" }
+          );
+        }
       };
 
       /* =================================================
-         FIRST PAGE HEADER
+         FIRST PAGE HEADER - 12 PT
       ================================================= */
 
-      const headerTop = 13;
+      const centerX = pageWidth / 2;
+      const headerTop = 9;
 
       pdf.setFillColor(255, 255, 255);
-      pdf.rect(0, 0, pageWidth, 37, "F");
+      pdf.rect(0, 0, pageWidth, 43, "F");
 
+      // School name
       pdf.setTextColor(0, 0, 0);
       pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(13);
+      pdf.setFontSize(12);
 
       pdf.text(
         "Holy Family Academy",
-        pageWidth / 2,
+        centerX,
         headerTop,
         { align: "center" }
       );
 
+      // School location
       pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(9);
+      pdf.setFontSize(12);
 
       pdf.text(
         "Angeles City",
-        pageWidth / 2,
-        headerTop + 5,
+        centerX,
+        headerTop + 4.5,
         { align: "center" }
       );
 
-      pdf.text(
-        "Grade School IMC",
-        pageWidth / 2,
-        headerTop + 10,
-        { align: "center" }
-      );
-
+      // Main report title
       pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(11);
+      pdf.setFontSize(12);
+
+      const titleLines = [
+        "STATISTICAL REPORT ON INTERNET AND",
+        "RESEARCH SECTION ACTIVITIES",
+      ];
+
+      const titleStartY = headerTop + 12;
+
+      pdf.text(titleLines, centerX, titleStartY, {
+        align: "center",
+        lineHeightFactor: 1.05,
+      });
+
+      // Reporting period
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(10);
 
       pdf.text(
-        "Internet Usage Report",
-        pageWidth / 2,
-        headerTop + 17,
-        { align: "center" }
-      );
-
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(9);
-
-      pdf.text(
-        `Reporting Period: ${periodLabel}`,
-        pageWidth / 2,
+        reportHeading,
+        centerX,
         headerTop + 22,
         { align: "center" }
       );
 
+      // Header divider
+      const headerBottom = headerTop + 26;
+
       pdf.setDrawColor(130, 130, 130);
-      pdf.setLineWidth(0.35);
+      pdf.setLineWidth(0.3);
 
       pdf.line(
         margin,
-        38,
+        headerBottom,
         pageWidth - margin,
-        38
+        headerBottom
       );
 
-      let currentY = 45;
+      let currentY = headerBottom + 6;
 
       /* =================================================
          PURPOSE BREAKDOWN GRAPH
+         ORIGINAL SIZE AND FORMAT PRESERVED
       ================================================= */
 
       pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(11);
+      pdf.setFontSize(10);
       pdf.setTextColor(0, 0, 0);
 
       pdf.text("Purpose Breakdown", margin, currentY);
@@ -745,7 +781,7 @@ export default function Purpose() {
       currentY += 5;
 
       const graphWidth = contentWidth;
-      const graphHeight = 72;
+      const graphHeight = 110;
       const graphX = margin;
       const graphY = currentY;
 
@@ -754,7 +790,7 @@ export default function Purpose() {
         1
       );
 
-      const labelWidth = 38;
+      const labelWidth = 42;
       const valueWidth = 12;
 
       const barAreaWidth = Math.max(
@@ -769,7 +805,10 @@ export default function Purpose() {
         const centerY =
           graphY + rowHeight * index + rowHeight / 2;
 
-        setBodyFont(8.5);
+        // Category label
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(8.5);
+        pdf.setTextColor(0, 0, 0);
 
         pdf.text(
           item.name,
@@ -777,8 +816,9 @@ export default function Purpose() {
           centerY + 1
         );
 
+        // Bar background
         const barX = graphX + labelWidth;
-        const barHeight = 5;
+        const barHeight = 7;
         const barY = centerY - barHeight / 2;
 
         pdf.setFillColor(238, 238, 238);
@@ -791,6 +831,7 @@ export default function Purpose() {
           "F"
         );
 
+        // Actual bar
         const barWidth =
           (item.count / maxValue) * barAreaWidth;
 
@@ -813,6 +854,7 @@ export default function Purpose() {
           );
         }
 
+        // Value at the end of the bar
         pdf.setFont("helvetica", "bold");
         pdf.setFontSize(8.5);
         pdf.setTextColor(0, 0, 0);
@@ -824,48 +866,47 @@ export default function Purpose() {
         );
       });
 
-      currentY += graphHeight + 4;
+      currentY += graphHeight + 5;
 
       /* =================================================
          SUMMARY TOTAL
-         Only Total Recorded Sessions
       ================================================= */
 
-/* =================================================
-   SUMMARY TOTAL
-================================================= */
+      pdf.setDrawColor(175, 175, 175);
+      pdf.setLineWidth(0.25);
 
-    pdf.setDrawColor(175, 175, 175);
-    pdf.setLineWidth(0.25);
+      pdf.line(
+        margin,
+        currentY,
+        pageWidth - margin,
+        currentY
+      );
 
-    pdf.line(
-      margin,
-      currentY,
-      pageWidth - margin,
-      currentY
-    );
+      currentY += 5;
 
-    currentY += 7;
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(9);
+      pdf.setTextColor(0, 0, 0);
 
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(10);
-    pdf.setTextColor(0, 0, 0);
+      pdf.text(
+        "Total Purpose Selections",
+        margin,
+        currentY
+      );
 
-    pdf.text("Total Purpose Selections", margin, currentY);
+      pdf.setFont("helvetica", "normal");
 
-    pdf.setFont("helvetica", "normal");
+      pdf.text(
+        String(analytics.total),
+        pageWidth - margin,
+        currentY,
+        { align: "right" }
+      );
 
-    pdf.text(
-      String(analytics.total),
-      pageWidth - margin,
-      currentY,
-      { align: "right" }
-    );
-
-    currentY += 7;
+      currentY += 9;
 
       /* =================================================
-         CONCLUSION
+         CONCLUSION - 11 PT
       ================================================= */
 
       pdf.setFont("helvetica", "bold");
@@ -876,106 +917,171 @@ export default function Purpose() {
 
       currentY += 6;
 
-      setBodyFont(10);
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(11);
+      pdf.setTextColor(0, 0, 0);
 
       const conclusionLines = pdf.splitTextToSize(
         summaryText,
         contentWidth
       );
 
-      const conclusionLineHeight = 7;
+      const conclusionLineHeight = 5.2;
 
-      conclusionLines.forEach((line) => {
-        if (currentY + conclusionLineHeight > bodyBottom) {
-          pdf.addPage();
-          currentY = margin + 2;
-        }
+      // Extra space between conclusion and signatures.
+      const signatureGap = 13;
 
+      const signatureLineWidth = 48;
+      const signatureColumnWidth = contentWidth / 2;
+
+      const signatureBlockHeight = 19;
+
+      const maxConclusionHeight =
+        pageHeight -
+        22 -
+        currentY -
+        signatureGap -
+        signatureBlockHeight;
+
+      const maxConclusionLines = Math.max(
+        1,
+        Math.floor(
+          maxConclusionHeight / conclusionLineHeight
+        )
+      );
+
+      let finalConclusionLines = conclusionLines;
+
+      if (conclusionLines.length > maxConclusionLines) {
+        finalConclusionLines = conclusionLines.slice(
+          0,
+          maxConclusionLines
+        );
+
+        const lastIndex = finalConclusionLines.length - 1;
+
+        finalConclusionLines[lastIndex] =
+          finalConclusionLines[lastIndex].replace(/[.,;:]?$/, "…");
+      }
+
+      finalConclusionLines.forEach((line) => {
         pdf.text(line, margin, currentY);
         currentY += conclusionLineHeight;
       });
 
       /* =================================================
-         SIGNATORIES
-         Prepared By / Reviewed By
+         SIGNATORIES - WITH EXTRA SPACING
       ================================================= */
 
-     /* =================================================
-   SIGNATORIES
-================================================= */
+      // Add visible separation after conclusion.
+      currentY += signatureGap;
 
-    const signatureBlockHeight = 28;
+      const leftLineX =
+        margin + (signatureColumnWidth - signatureLineWidth) / 2;
 
-    if (currentY + signatureBlockHeight > bodyBottom) {
-      pdf.addPage();
-      currentY = margin + 5;
-    } else {
-      currentY += 5;
-    }
+      const rightLineX =
+        margin +
+        signatureColumnWidth +
+        (signatureColumnWidth - signatureLineWidth) / 2;
 
-    const signatureColumnWidth = contentWidth / 2;
-    const leftColumnX = margin;
-    const rightColumnX = margin + signatureColumnWidth;
+      const leftCenterX =
+        leftLineX + signatureLineWidth / 2;
 
-    const signatureLabelY = currentY;
-    const nameY = currentY + 10;
-    const lineY = currentY + 12;
-    const positionY = currentY + 16;
+      const rightCenterX =
+        rightLineX + signatureLineWidth / 2;
 
-    /* PREPARED BY */
+      const signatureLabelY = currentY;
+      const nameY = currentY + 8;
+      const lineY = currentY + 10;
+      const positionY = currentY + 14;
 
-    pdf.setFont("helvetica", "normal");
-    pdf.setFontSize(9);
-    pdf.setTextColor(0, 0, 0);
+      pdf.setTextColor(0, 0, 0);
 
-    pdf.text("Prepared By:", leftColumnX, signatureLabelY);
+      // Prepared By
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(8.5);
 
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(9);
+      pdf.text(
+        "Prepared By:",
+        leftLineX,
+        signatureLabelY
+      );
 
-    pdf.text("Airon Lingad", leftColumnX, nameY);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(9);
 
-    pdf.setDrawColor(0, 0, 0);
-    pdf.setLineWidth(0.25);
+      pdf.text(
+        "Airon Lingad",
+        leftCenterX,
+        nameY,
+        { align: "center" }
+      );
 
-    pdf.line(
-      leftColumnX,
-      lineY,
-      leftColumnX + 48,
-      lineY
-    );
+      pdf.setDrawColor(0, 0, 0);
+      pdf.setLineWidth(0.25);
 
-    pdf.setFont("helvetica", "normal");
-    pdf.setFontSize(9);
+      pdf.line(
+        leftLineX,
+        lineY,
+        leftLineX + signatureLineWidth,
+        lineY
+      );
 
-    pdf.text("Library IT Staff", leftColumnX, positionY);
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(8.5);
 
-    /* REVIEWED BY */
+      pdf.text(
+        "Library IT Staff",
+        leftCenterX,
+        positionY,
+        { align: "center" }
+      );
 
-    pdf.setFont("helvetica", "normal");
-    pdf.setFontSize(9);
+      // Reviewed By
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(8.5);
 
-    pdf.text("Reviewed By:", rightColumnX, signatureLabelY);
+      pdf.text(
+        "Reviewed By:",
+        rightLineX,
+        signatureLabelY
+      );
 
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(9);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(9);
 
-    pdf.text("Remedios Baking", rightColumnX, nameY);
+      pdf.text(
+        "Remedios Baking",
+        rightCenterX,
+        nameY,
+        { align: "center" }
+      );
 
-    pdf.setDrawColor(0, 0, 0);
-    pdf.setLineWidth(0.25);
+      pdf.setDrawColor(0, 0, 0);
+      pdf.setLineWidth(0.25);
 
-    pdf.line(
-      rightColumnX,
-      lineY,
-      rightColumnX + 48,
-      lineY
-    );
+      pdf.line(
+        rightLineX,
+        lineY,
+        rightLineX + signatureLineWidth,
+        lineY
+      );
 
-    pdf.setFont("helvetica", "normal");
-    pdf.setFontSize(9);
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(8.5);
 
-    pdf.text("IMC Coordinator", rightColumnX, positionY);
+      pdf.text(
+        "IMC Coordinator",
+        rightCenterX,
+        positionY,
+        { align: "center" }
+      );
+
+      /* =================================================
+         FIRST PAGE FOOTER - NO PAGE NUMBER
+      ================================================= */
+
+      addFooter(0, 0, false);
 
       /* =================================================
          REGISTERED USAGE RECORDS
@@ -1006,6 +1112,7 @@ export default function Purpose() {
           top: margin,
           bottom: 18,
         },
+
         tableWidth: contentWidth,
 
         head: [
@@ -1089,17 +1196,27 @@ export default function Purpose() {
       });
 
       /* =================================================
-         PAGE NUMBERS AND FOOTERS
+         PAGE NUMBERS
+         FIRST PAGE EXCLUDED
+         TABLE PAGES START AT PAGE 1
       ================================================= */
 
       const totalPdfPages = pdf.internal.getNumberOfPages();
+      const totalTablePages = totalPdfPages - 1;
 
-      for (let page = 1; page <= totalPdfPages; page++) {
+      for (let page = 2; page <= totalPdfPages; page++) {
         pdf.setPage(page);
-        addFooter(page, totalPdfPages);
+
+        addFooter(
+          page - 1,
+          totalTablePages,
+          true
+        );
       }
 
-      /* SAVE PDF */
+      /* =================================================
+         SAVE PDF
+      ================================================= */
 
       pdf.save(
         `Internet_Usage_Report_${periodLabel.replace(/\s+/g, "_")}.pdf`
@@ -1108,7 +1225,8 @@ export default function Purpose() {
       console.error("PDF export error:", error);
 
       window.alert(
-        "Unable to export the PDF report. Please try again."
+        error.message ||
+          "Unable to export the PDF report. Please try again."
       );
     } finally {
       setExporting(false);
@@ -1121,8 +1239,6 @@ export default function Purpose() {
 
   return (
     <div className="usage-content">
-      {/* PAGE HEADER */}
-
       <div className="usage-header">
         <div>
           <h1>Usage</h1>
