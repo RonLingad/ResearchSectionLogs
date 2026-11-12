@@ -643,7 +643,7 @@ export default function RecordsData() {
           position: "Library IT Staff",
         },
         {
-          name: "Remedios Baking",
+          name: "Ms. Remedios Baking",
           position: "IMC Coordinator",
         },
       ];
