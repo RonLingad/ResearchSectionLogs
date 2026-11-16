@@ -5,14 +5,13 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import "./RecordsData.css";
 
-const YEARS = [2026, 2027, 2028, 2029, 2030];
+/* =========================================================
+   SCHOOL YEAR SETTINGS
+========================================================= */
+
+const SCHOOL_YEAR_STARTS = [2026, 2027, 2028, 2029];
 
 const MONTHS = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
   "June",
   "July",
   "August",
@@ -20,7 +19,21 @@ const MONTHS = [
   "October",
   "November",
   "December",
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
 ];
+
+const MONTH_INDICES = [
+  5, 6, 7, 8, 9, 10,
+  11, 0, 1, 2, 3, 4,
+];
+
+/* =========================================================
+   HELPER FUNCTIONS
+========================================================= */
 
 function parseDate(value) {
   if (!value) return null;
@@ -30,18 +43,36 @@ function parseDate(value) {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+function getSchoolYearStart(date) {
+  return date.getMonth() >= 5
+    ? date.getFullYear()
+    : date.getFullYear() - 1;
+}
+
+function getSchoolYearLabel(startYear) {
+  return `${startYear}-${startYear + 1}`;
+}
+
+function getSchoolYearCycle(startYear) {
+  return `June ${startYear} - May ${startYear + 1}`;
+}
+
 function formatHour(hour) {
-  const formatTime = (value, minute) => {
+  const formatTime = (value) => {
     const suffix = value >= 12 ? "PM" : "AM";
     const displayHour = value % 12 || 12;
 
-    return `${displayHour}:${String(minute).padStart(2, "0")} ${suffix}`;
+    return `${displayHour}:00 ${suffix}`;
   };
 
   const nextHour = (hour + 1) % 24;
 
-  return `${formatTime(hour, 0)} - ${formatTime(nextHour, 0)}`;
+  return `${formatTime(hour)} - ${formatTime(nextHour)}`;
 }
+
+/* =========================================================
+   MAIN COMPONENT
+========================================================= */
 
 export default function RecordsData() {
   const [logs, setLogs] = useState([]);
@@ -49,33 +80,66 @@ export default function RecordsData() {
   const [exporting, setExporting] = useState(false);
 
   const [viewMode, setViewMode] = useState("month");
-  const [selectedYear, setSelectedYear] = useState("2026");
+
+  const [selectedSchoolYear, setSelectedSchoolYear] =
+    useState("2026");
 
   /* =========================================================
-     FETCH
+     FETCH ALL RECORDS FROM SUPABASE
   ========================================================= */
 
   async function fetchLogs() {
     try {
       setLoading(true);
 
-      const { data, error } = await supabase
-        .from("logs")
-        .select("session_in, session_out")
-        .order("session_in", {
-          ascending: true,
-        });
+      const pageSize = 1000;
 
-      if (error) {
-        console.error("Error fetching records:", error);
-        setLogs([]);
-        return;
+      let from = 0;
+      let allLogs = [];
+
+      while (true) {
+        const { data, error } = await supabase
+          .from("logs")
+          .select("session_in, session_out")
+          .order("session_in", {
+            ascending: true,
+          })
+          .range(from, from + pageSize - 1);
+
+        if (error) {
+          console.error(
+            "Error fetching records:",
+            error
+          );
+
+          setLogs([]);
+          return;
+        }
+
+        allLogs = allLogs.concat(data || []);
+
+        if (!data || data.length < pageSize) {
+          break;
+        }
+
+        from += pageSize;
       }
 
-      setLogs(data || []);
+      setLogs(allLogs);
+
+      console.log(
+        "Total Records Data fetched:",
+        allLogs.length
+      );
+
     } catch (error) {
-      console.error("Unexpected error:", error);
+      console.error(
+        "Unexpected error fetching records:",
+        error
+      );
+
       setLogs([]);
+
     } finally {
       setLoading(false);
     }
@@ -86,10 +150,24 @@ export default function RecordsData() {
   }, []);
 
   /* =========================================================
+     SCHOOL YEAR FILTER
+  ========================================================= */
+
+  const selectedStartYear = Number(selectedSchoolYear);
+
+  const selectedSchoolYearLabel =
+    getSchoolYearLabel(selectedStartYear);
+
+  const selectedCycle =
+    getSchoolYearCycle(selectedStartYear);
+
+  /* =========================================================
      GRAPH DATA
   ========================================================= */
 
   const graphData = useMemo(() => {
+    // MONTHLY VIEW: JUNE TO MAY
+
     if (viewMode === "month") {
       const counts = MONTHS.map((month) => ({
         label: month,
@@ -101,16 +179,27 @@ export default function RecordsData() {
 
         if (!date) return;
 
-        if (date.getFullYear() === Number(selectedYear)) {
-          counts[date.getMonth()].value += 1;
+        const schoolYear = getSchoolYearStart(date);
+
+        if (schoolYear !== selectedStartYear) return;
+
+        const calendarMonth = date.getMonth();
+
+        const schoolMonthIndex =
+          MONTH_INDICES.indexOf(calendarMonth);
+
+        if (schoolMonthIndex !== -1) {
+          counts[schoolMonthIndex].value += 1;
         }
       });
 
       return counts;
     }
 
-    const counts = YEARS.map((year) => ({
-      label: String(year),
+    // SCHOOL YEAR COMPARISON
+
+    const counts = SCHOOL_YEAR_STARTS.map((year) => ({
+      label: getSchoolYearLabel(year),
       value: 0,
     }));
 
@@ -119,10 +208,11 @@ export default function RecordsData() {
 
       if (!date) return;
 
-      const year = date.getFullYear();
+      const schoolYear = getSchoolYearStart(date);
 
       const found = counts.find(
-        (item) => Number(item.label) === year
+        (item) =>
+          item.label === getSchoolYearLabel(schoolYear)
       );
 
       if (found) {
@@ -131,7 +221,7 @@ export default function RecordsData() {
     });
 
     return counts;
-  }, [logs, viewMode, selectedYear]);
+  }, [logs, viewMode, selectedStartYear]);
 
   /* =========================================================
      PEAK HOURS
@@ -145,14 +235,14 @@ export default function RecordsData() {
 
       if (!date) return;
 
-      const year = date.getFullYear();
+      const schoolYear = getSchoolYearStart(date);
 
-      const matchesPeriod =
+      const included =
         viewMode === "month"
-          ? year === Number(selectedYear)
-          : YEARS.includes(year);
+          ? schoolYear === selectedStartYear
+          : SCHOOL_YEAR_STARTS.includes(schoolYear);
 
-      if (!matchesPeriod) return;
+      if (!included) return;
 
       hourlyCounts[date.getHours()] += 1;
     });
@@ -172,10 +262,10 @@ export default function RecordsData() {
         return a.hour - b.hour;
       })
       .slice(0, 3);
-  }, [logs, viewMode, selectedYear]);
+  }, [logs, viewMode, selectedStartYear]);
 
   /* =========================================================
-     SUMMARY - DASHBOARD
+     SUMMARY
   ========================================================= */
 
   const summary = useMemo(() => {
@@ -186,7 +276,9 @@ export default function RecordsData() {
 
     const highest = graphData.reduce(
       (highest, current) =>
-        current.value > highest.value ? current : highest,
+        current.value > highest.value
+          ? current
+          : highest,
       graphData[0] || {
         label: "—",
         value: 0,
@@ -231,15 +323,15 @@ export default function RecordsData() {
   const conclusion = useMemo(() => {
     if (summary.total === 0) {
       return viewMode === "month"
-        ? `No registered usage records were recorded for ${selectedYear}.`
-        : "No registered usage records were recorded from 2026 to 2030.";
+        ? `No registered usage records were recorded for School Year ${selectedSchoolYearLabel}.`
+        : "No registered usage records were recorded for the selected school years.";
     }
 
     if (viewMode === "month") {
       return (
-        `For ${selectedYear}, the highest recorded usage occurred in ` +
-        `${summary.highest.label} with ${summary.highest.value} ` +
-        `${summary.highest.value === 1 ? "record" : "records"}. ` +
+        `For School Year ${selectedSchoolYearLabel}, the highest recorded ` +
+        `usage occurred in ${summary.highest.label} with ` +
+        `${summary.highest.value} ${summary.highest.value === 1 ? "record" : "records"}. ` +
         `The lowest recorded usage among active months was in ` +
         `${summary.lowest.label} with ${summary.lowest.value} ` +
         `${summary.lowest.value === 1 ? "record" : "records"}. ` +
@@ -249,16 +341,20 @@ export default function RecordsData() {
     }
 
     return (
-      `From 2026 to 2030, the highest recorded usage occurred in ` +
-      `${summary.highest.label} with ${summary.highest.value} ` +
-      `${summary.highest.value === 1 ? "record" : "records"}. ` +
-      `The lowest recorded usage among active years was in ` +
-      `${summary.lowest.label} with ${summary.lowest.value} ` +
+      `In the school year comparison, the highest recorded usage occurred ` +
+      `during School Year ${summary.highest.label} with ` +
+      `${summary.highest.value} ${summary.highest.value === 1 ? "record" : "records"}. ` +
+      `The lowest recorded usage among active school years was during ` +
+      `School Year ${summary.lowest.label} with ${summary.lowest.value} ` +
       `${summary.lowest.value === 1 ? "record" : "records"}. ` +
       `A total of ${summary.total} registered sessions was recorded, ` +
-      `with an average of ${summary.average.toFixed(1)} sessions per year.`
+      `with an average of ${summary.average.toFixed(1)} sessions per school year.`
     );
-  }, [summary, viewMode, selectedYear]);
+  }, [
+    summary,
+    viewMode,
+    selectedSchoolYearLabel,
+  ]);
 
   /* =========================================================
      PDF EXPORT
@@ -286,13 +382,13 @@ export default function RecordsData() {
       const contentWidth = pageWidth - margin * 2;
 
       /* =====================================================
-         COMPACT CENTERED HEADER
+         HEADER
       ===================================================== */
 
       pdf.setTextColor(0, 0, 0);
 
       pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(11);
+      pdf.setFontSize(12);
 
       pdf.text(
         "Holy Family Academy",
@@ -302,82 +398,115 @@ export default function RecordsData() {
       );
 
       pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(9);
+      pdf.setFontSize(11);
 
       pdf.text(
         "Angeles City",
         pageWidth / 2,
-        16,
+        17,
         { align: "center" }
       );
 
       pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(10.5);
+      pdf.setFontSize(12);
 
       pdf.text(
         "STATISTICAL REPRESENTATION ON THE ACTIVITY ON INTERNET",
         pageWidth / 2,
-        24,
+        25,
         { align: "center" }
       );
 
       pdf.text(
         "AND RESEARCH SECTION",
         pageWidth / 2,
-        29,
+        31,
         { align: "center" }
       );
 
-      pdf.setFontSize(10);
-
-      const periodTitle =
+      const reportPeriod =
         viewMode === "month"
-          ? `FOR THE YEAR ${selectedYear}`
-          : "FOR THE YEARS 2026 TO 2030";
+          ? `SCHOOL YEAR ${selectedSchoolYearLabel}`
+          : "SCHOOL YEAR COMPARISON";
 
       pdf.text(
-        periodTitle,
+        reportPeriod,
         pageWidth / 2,
-        35,
+        37,
         { align: "center" }
       );
 
+      // Removed the separate Cycle and School Year header lines.
+
       pdf.setDrawColor(0, 0, 0);
-      pdf.setLineWidth(0.3);
+      pdf.setLineWidth(0.4);
 
       pdf.line(
         margin,
-        39,
+        44,
         pageWidth - margin,
-        39
+        44
       );
 
-      let y = 46;
-
       /* =====================================================
-         VERTICAL COLUMN GRAPH
+         GRAPH TITLE
       ===================================================== */
 
+      let y = 51;
+
       pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(10);
+      pdf.setFontSize(12);
       pdf.setTextColor(0, 0, 0);
 
       pdf.text(
         viewMode === "month"
-          ? `Monthly Usage - ${selectedYear}`
-          : "Yearly Usage - 2026 to 2030",
+          ? "Monthly Usage"
+          : "School Year Comparison",
         margin,
         y
       );
 
       y += 6;
 
-      const chartLeft = margin + 12;
-      const chartRight = pageWidth - margin - 4;
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(10);
+
+      pdf.text(
+        "Number of Registered Sessions",
+        margin,
+        y
+      );
+
+      y += 5;
+
+      /* CYCLE DATE RANGE */
+
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(9);
+      pdf.setTextColor(70, 70, 70);
+
+      const cycleDescription =
+        viewMode === "month"
+          ? selectedCycle
+          : "June 2026 - May 2030";
+
+      pdf.text(
+        cycleDescription,
+        margin,
+        y
+      );
+
+      y += 7;
+
+      /* =====================================================
+         VERTICAL GRAPH
+      ===================================================== */
+
+      const chartLeft = margin + 15;
+      const chartRight = pageWidth - margin - 5;
       const chartWidth = chartRight - chartLeft;
 
-      const chartHeight =
-        viewMode === "month" ? 110 : 110;
+      const chartHeight = 100;
 
       const chartTop = y;
       const chartBottom = chartTop + chartHeight;
@@ -387,16 +516,16 @@ export default function RecordsData() {
         1
       );
 
-      const roundedMax =
-        Math.ceil(maxValue / 5) * 5 || 5;
-
       const tickCount = 5;
 
-      /* Grid lines and Y-axis labels */
+      const roundedMax =
+        Math.ceil(maxValue / tickCount) * tickCount || 5;
+
+      /* Y-AXIS AND GRID */
 
       pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(6.5);
-      pdf.setTextColor(80, 80, 80);
+      pdf.setFontSize(9);
+      pdf.setTextColor(65, 65, 65);
 
       for (let i = 0; i <= tickCount; i++) {
         const value =
@@ -407,7 +536,7 @@ export default function RecordsData() {
           (chartHeight / tickCount) * i;
 
         pdf.setDrawColor(220, 225, 230);
-        pdf.setLineWidth(0.2);
+        pdf.setLineWidth(0.25);
 
         pdf.line(
           chartLeft,
@@ -419,15 +548,15 @@ export default function RecordsData() {
         pdf.text(
           String(Math.round(value)),
           chartLeft - 3,
-          gridY + 1,
+          gridY + 1.5,
           { align: "right" }
         );
       }
 
-      /* Axes */
+      /* AXES */
 
-      pdf.setDrawColor(70, 70, 70);
-      pdf.setLineWidth(0.3);
+      pdf.setDrawColor(65, 65, 65);
+      pdf.setLineWidth(0.4);
 
       pdf.line(
         chartLeft,
@@ -443,16 +572,14 @@ export default function RecordsData() {
         chartBottom
       );
 
-      /* Vertical bars */
+      /* BARS */
 
-      const slotWidth =
-        chartWidth / graphData.length;
+      const slotWidth = chartWidth / graphData.length;
 
-      const barWidth =
-        Math.min(
-          viewMode === "month" ? 9 : 17,
-          slotWidth * 0.62
-        );
+      const barWidth = Math.min(
+        viewMode === "month" ? 10 : 22,
+        slotWidth * 0.68
+      );
 
       graphData.forEach((item, index) => {
         const centerX =
@@ -463,11 +590,8 @@ export default function RecordsData() {
         const barHeight =
           (item.value / roundedMax) * chartHeight;
 
-        const barX =
-          centerX - barWidth / 2;
-
-        const barY =
-          chartBottom - barHeight;
+        const barX = centerX - barWidth / 2;
+        const barY = chartBottom - barHeight;
 
         if (item.value > 0) {
           pdf.setFillColor(21, 101, 192);
@@ -481,15 +605,15 @@ export default function RecordsData() {
           );
         }
 
-        /* Values */
+        /* VALUE */
 
         pdf.setFont("helvetica", "bold");
-        pdf.setFontSize(6.5);
+        pdf.setFontSize(10);
         pdf.setTextColor(0, 0, 0);
 
         const valueY =
           item.value > 0
-            ? Math.max(chartTop - 1, barY - 1.5)
+            ? Math.max(chartTop - 1, barY - 2)
             : chartBottom - 2;
 
         pdf.text(
@@ -499,11 +623,11 @@ export default function RecordsData() {
           { align: "center" }
         );
 
-        /* X-axis labels */
+        /* LABEL */
 
         pdf.setFont("helvetica", "normal");
         pdf.setFontSize(
-          viewMode === "month" ? 6 : 7
+          viewMode === "month" ? 8.5 : 9
         );
 
         const label =
@@ -514,24 +638,24 @@ export default function RecordsData() {
         pdf.text(
           label,
           centerX,
-          chartBottom + 4,
+          chartBottom + 6,
           { align: "center" }
         );
       });
 
-      y = chartBottom + 11;
+      y = chartBottom + 14;
 
       /* =====================================================
-         COMPACT PEAK HOURS
+         PEAK HOURS
       ===================================================== */
 
       pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(9.5);
+      pdf.setFontSize(12);
       pdf.setTextColor(0, 0, 0);
 
       pdf.text("Peak Hours", margin, y);
 
-      y += 2;
+      y += 3;
 
       const peakRows =
         peakHours.length > 0
@@ -564,9 +688,9 @@ export default function RecordsData() {
 
         styles: {
           font: "helvetica",
-          fontSize: 7,
-          cellPadding: 1.2,
-          minCellHeight: 5,
+          fontSize: 9,
+          cellPadding: 1.5,
+          minCellHeight: 6,
           textColor: [0, 0, 0],
           lineColor: [190, 190, 190],
           lineWidth: 0.2,
@@ -576,6 +700,7 @@ export default function RecordsData() {
           fillColor: [11, 42, 74],
           textColor: [255, 255, 255],
           fontStyle: "bold",
+          fontSize: 9,
         },
 
         columnStyles: {
@@ -593,19 +718,19 @@ export default function RecordsData() {
         },
       });
 
-      y = pdf.lastAutoTable.finalY + 5;
+      y = pdf.lastAutoTable.finalY + 6;
 
       /* =====================================================
          CONCLUSION
       ===================================================== */
 
       pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(10);
+      pdf.setFontSize(12);
       pdf.setTextColor(0, 0, 0);
 
       pdf.text("Conclusion", margin, y);
 
-      y += 5;
+      y += 6;
 
       pdf.setFont("helvetica", "normal");
       pdf.setFontSize(9.5);
@@ -623,10 +748,10 @@ export default function RecordsData() {
       });
 
       /* =====================================================
-         SIGNATURES AND POSITIONS
+         SIGNATORIES
       ===================================================== */
 
-      y += 10;
+      const signatureY = pageHeight - 30;
 
       const signatureWidth = 65;
       const signatureGap = 25;
@@ -653,47 +778,46 @@ export default function RecordsData() {
           signatureStartX +
           index * (signatureWidth + signatureGap);
 
-        const centerX =
-          x + signatureWidth / 2;
+        const centerX = x + signatureWidth / 2;
 
         pdf.setDrawColor(0, 0, 0);
-        pdf.setLineWidth(0.3);
+        pdf.setLineWidth(0.35);
 
         pdf.line(
           x,
-          y + 4,
+          signatureY + 4,
           x + signatureWidth,
-          y + 4
+          signatureY + 4
         );
 
         pdf.setFont("helvetica", "bold");
-        pdf.setFontSize(9.5);
+        pdf.setFontSize(11);
         pdf.setTextColor(0, 0, 0);
 
         pdf.text(
           person.name,
           centerX,
-          y + 3,
+          signatureY + 3,
           { align: "center" }
         );
 
         pdf.setFont("helvetica", "normal");
-        pdf.setFontSize(8.5);
+        pdf.setFontSize(10);
 
         pdf.text(
           person.position,
           centerX,
-          y + 9,
+          signatureY + 11,
           { align: "center" }
         );
       });
 
       /* =====================================================
-         FOOTER - ONE PAGE
+         FOOTER
       ===================================================== */
 
       pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(8);
+      pdf.setFontSize(9);
       pdf.setTextColor(90, 90, 90);
 
       pdf.text(
@@ -709,13 +833,13 @@ export default function RecordsData() {
 
       const filename =
         viewMode === "month"
-          ? `Record_Data_${selectedYear}.pdf`
-          : "Record_Data_2026_2030.pdf";
+          ? `Record_Data_SY_${selectedSchoolYearLabel}.pdf`
+          : "Record_Data_School_Year_Comparison.pdf";
 
       pdf.save(filename);
+
     } catch (error) {
       console.error("PDF export error:", error);
-
       alert("Unable to export the PDF report.");
     } finally {
       setExporting(false);
@@ -723,7 +847,7 @@ export default function RecordsData() {
   }
 
   /* =========================================================
-     GRAPH MAX
+     DASHBOARD GRAPH
   ========================================================= */
 
   const maxGraphValue = Math.max(
@@ -749,22 +873,27 @@ export default function RecordsData() {
             value={viewMode}
             onChange={(e) => setViewMode(e.target.value)}
           >
-            <option value="month">Month</option>
-            <option value="year">Year</option>
+            <option value="month">Monthly</option>
+
+            <option value="schoolYear">
+              School Year Comparison
+            </option>
           </select>
         </div>
 
         {viewMode === "month" && (
           <div className="records-data-filter-group">
-            <label>Year</label>
+            <label>School Year</label>
 
             <select
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(e.target.value)}
+              value={selectedSchoolYear}
+              onChange={(e) =>
+                setSelectedSchoolYear(e.target.value)
+              }
             >
-              {YEARS.map((year) => (
+              {SCHOOL_YEAR_STARTS.map((year) => (
                 <option key={year} value={year}>
-                  {year}
+                  {getSchoolYearLabel(year)}
                 </option>
               ))}
             </select>
@@ -787,8 +916,8 @@ export default function RecordsData() {
 
           <strong>
             {viewMode === "month"
-              ? selectedYear
-              : "2026–2030"}
+              ? `SY ${selectedSchoolYearLabel}`
+              : "All School Years"}
           </strong>
         </div>
 
@@ -804,8 +933,8 @@ export default function RecordsData() {
 
             <p>
               {viewMode === "month"
-                ? `Registered usage by month for ${selectedYear}`
-                : "Registered usage by year from 2026 to 2030"}
+                ? `Monthly usage for School Year ${selectedSchoolYearLabel} (June - May)`
+                : "Comparison of registered usage across school years"}
             </p>
           </div>
         </div>
@@ -855,7 +984,7 @@ export default function RecordsData() {
 
       </section>
 
-      {/* DASHBOARD SUMMARY */}
+      {/* SUMMARY */}
 
       <section className="records-data-summary-section">
 
@@ -864,8 +993,8 @@ export default function RecordsData() {
 
           <span>
             {viewMode === "month"
-              ? selectedYear
-              : "2026–2030"}
+              ? `SY ${selectedSchoolYearLabel}`
+              : "School Year Comparison"}
           </span>
         </div>
 
@@ -914,7 +1043,7 @@ export default function RecordsData() {
           <strong>Export Report</strong>
 
           <span>
-            Generate a PDF report of the displayed record data.
+            Generate a PDF report of the displayed school year data.
           </span>
         </div>
 

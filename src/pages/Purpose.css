@@ -269,7 +269,10 @@
   font-weight: 600;
 }
 
-/* PURPOSE GRAPH */
+/* =====================================================
+   PURPOSE GRAPH
+   Vertical bars with increased height and thickness
+===================================================== */
 
 .usage-chart-section {
   overflow: hidden;
@@ -278,8 +281,8 @@
 .usage-chart-container {
   position: relative;
   width: 100%;
-  height: 500px;
-  padding: 22px 24px;
+  height: 620px;
+  padding: 25px 30px;
   background: #ffffff;
 }
 
@@ -667,9 +670,10 @@
     font-size: 13px;
   }
 
+  /* Taller vertical graph on mobile */
   .usage-chart-container {
-    height: 400px;
-    padding: 12px;
+    height: 480px;
+    padding: 15px 10px;
   }
 
   .usage-summary-box p {

@@ -16,10 +16,10 @@ export default function Registration() {
   const [endTime, setEndTime] = useState("");
 
   const [showRulesModal, setShowRulesModal] = useState(true);
-
   const [showAlertModal, setShowAlertModal] = useState(false);
   const [alertMessage, setAlertMessage] = useState("");
 
+  // AVAILABLE PURPOSES
   const availablePurposes = [
     "Aralinks",
     "Research",
@@ -27,9 +27,10 @@ export default function Registration() {
     "Reading",
     "Trivia Search",
     "Print",
-    "Others",
+    "Investigatory Project",
   ];
 
+  // INTERNET USAGE RULES
   const internetRules = [
     "Use the internet for educational purposes only, such as searching for assignments, activities, research, balitaan, trivia, printing, Aralinks, and other school-related tasks.",
     "Using Google Maps or browsing pictures and websites unrelated to assignments is prohibited. This includes randomly searching for cars, toys, anime, and similar content.",
@@ -39,6 +40,7 @@ export default function Registration() {
     "Online games and social media are strongly discouraged and must not be used during computer sessions.",
   ];
 
+  // PURPOSE CHECKBOX HANDLER
   const handlePurposeChange = (purpose) => {
     setPurposes((prev) =>
       prev.includes(purpose)
@@ -101,25 +103,30 @@ export default function Registration() {
     setLoading(true);
 
     const sessionIn = new Date();
+
     const sessionOut = new Date(
       sessionIn.getTime() + 15 * 60 * 1000
     );
 
     try {
-      const { error } = await supabase.from("logs").insert([
-        {
-          fullname: fullname.trim(),
-          grade: grade,
-          purposes: purposes,
-          session_in: sessionIn.toISOString(),
-          session_out: sessionOut.toISOString(),
-        },
-      ]);
+      const { error } = await supabase
+        .from("logs")
+        .insert([
+          {
+            fullname: fullname.trim(),
+            grade: grade,
+            purposes: purposes,
+            session_in: sessionIn.toISOString(),
+            session_out: sessionOut.toISOString(),
+          },
+        ]);
 
       if (error) {
         console.error(error);
+
         setAlertMessage(error.message);
         setShowAlertModal(true);
+
         return;
       }
 
@@ -136,17 +143,22 @@ export default function Registration() {
       setFullname("");
       setGrade("");
       setPurposes([]);
+
     } catch (error) {
       console.error(error);
+
       setAlertMessage(
         "Something went wrong while registering. Please try again."
       );
+
       setShowAlertModal(true);
+
     } finally {
       setLoading(false);
     }
   };
 
+  // START SESSION
   const handleStartSession = () => {
     setShowModal(false);
     setShowRulesModal(true);
@@ -462,7 +474,7 @@ export default function Registration() {
                 </p>
               </div>
 
-              {/* LIVE CLOCK INSIDE POPUP */}
+              {/* LIVE CLOCK */}
               <div
                 style={{
                   display: "flex",

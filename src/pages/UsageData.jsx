@@ -1,9 +1,13 @@
 
-import React, { useEffect, useMemo, useState } from "react";
-import { supabase } from "../lib/supabase";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
+import { supabase } from "../lib/supabase";
 import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
 
 import {
   Chart as ChartJS,
@@ -36,40 +40,41 @@ ChartJS.register(
 
 const PURPOSE_CATEGORIES = [
   "Aralinks",
-  "Research",
+  "Online Research",
   "Epic Reading",
   "Reading",
   "Trivia Search",
   "Print",
-  "Others",
+  "Investigatory Project",
 ];
 
 const PURPOSE_COLORS = {
   Aralinks: "#1565c0",
-  Research: "#16803c",
+  "Online Research": "#16803c",
   "Epic Reading": "#7b1fa2",
   Reading: "#00838f",
   "Trivia Search": "#ef6c00",
   Print: "#d32f2f",
-  Others: "#6b7280",
+  "Investigatory Project": "#795548",
 };
 
 /* =========================================================
-   YEARS
+   SCHOOL YEARS
 ========================================================= */
 
-const YEARS = [2026, 2027, 2028, 2029, 2030];
+const SCHOOL_YEAR_STARTS = [
+  2026,
+  2027,
+  2028,
+  2029,
+  2030,
+];
 
 /* =========================================================
-   MONTHS
+   MONTHS - JUNE TO MAY
 ========================================================= */
 
 const MONTHS = [
-  { value: 1, label: "January", short: "Jan" },
-  { value: 2, label: "February", short: "Feb" },
-  { value: 3, label: "March", short: "Mar" },
-  { value: 4, label: "April", short: "Apr" },
-  { value: 5, label: "May", short: "May" },
   { value: 6, label: "June", short: "Jun" },
   { value: 7, label: "July", short: "Jul" },
   { value: 8, label: "August", short: "Aug" },
@@ -77,39 +82,50 @@ const MONTHS = [
   { value: 10, label: "October", short: "Oct" },
   { value: 11, label: "November", short: "Nov" },
   { value: 12, label: "December", short: "Dec" },
+  { value: 1, label: "January", short: "Jan" },
+  { value: 2, label: "February", short: "Feb" },
+  { value: 3, label: "March", short: "Mar" },
+  { value: 4, label: "April", short: "Apr" },
+  { value: 5, label: "May", short: "May" },
 ];
+
+/* =========================================================
+   FETCH SETTINGS
+========================================================= */
+
+const PAGE_SIZE = 1000;
 
 /* =========================================================
    DATE HELPERS
 ========================================================= */
 
-const parseDate = (value) => {
+function parseDate(value) {
   if (!value) return null;
 
   const date = new Date(value);
 
-  return Number.isNaN(date.getTime()) ? null : date;
-};
+  return Number.isNaN(date.getTime())
+    ? null
+    : date;
+}
 
-const formatDateTime = (value) => {
-  const date = parseDate(value);
+function getSchoolYearStart(date) {
+  const month = date.getMonth() + 1;
 
-  if (!date) return "—";
+  return month >= 6
+    ? date.getFullYear()
+    : date.getFullYear() - 1;
+}
 
-  return date.toLocaleString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-};
+function getSchoolYearLabel(year) {
+  return `SY ${year}-${year + 1}`;
+}
 
 /* =========================================================
    PURPOSE HELPERS
 ========================================================= */
 
-const getPurposeList = (purposes) => {
+function getPurposeList(purposes) {
   if (!purposes) return [];
 
   if (Array.isArray(purposes)) {
@@ -126,82 +142,96 @@ const getPurposeList = (purposes) => {
   }
 
   return [];
-};
+}
 
-const getMatchedPurpose = (purpose) => {
-  const cleanPurpose = String(purpose || "").trim();
+function getMatchedPurpose(purpose) {
+  const normalized = String(purpose || "")
+    .trim()
+    .toLowerCase();
+
+  if (
+    normalized === "research" ||
+    normalized === "online research"
+  ) {
+    return "Online Research";
+  }
+
+  if (
+    normalized === "others" ||
+    normalized === ""
+  ) {
+    return "Aralinks";
+  }
 
   return (
     PURPOSE_CATEGORIES.find(
       (category) =>
-        category.toLowerCase() === cleanPurpose.toLowerCase()
-    ) || "Others"
+        category.toLowerCase() === normalized
+    ) || "Aralinks"
   );
-};
+}
 
 /* =========================================================
    PURPOSE COUNTS
-
-   Each log represents one registered session.
-   If a session contains multiple purposes, each purpose
-   is counted separately in the purpose breakdown.
 ========================================================= */
 
-const calculatePurposeCounts = (logs) => {
+function calculatePurposeCounts(logs) {
   const counts = Object.fromEntries(
-    PURPOSE_CATEGORIES.map((purpose) => [purpose, 0])
+    PURPOSE_CATEGORIES.map((purpose) => [
+      purpose,
+      0,
+    ])
   );
 
   logs.forEach((log) => {
     const purposes = getPurposeList(log.purposes);
 
     if (purposes.length === 0) {
-      counts.Others += 1;
+      counts.Aralinks += 1;
       return;
     }
 
     purposes.forEach((purpose) => {
-      counts[getMatchedPurpose(purpose)] += 1;
+      const matched = getMatchedPurpose(purpose);
+      counts[matched] += 1;
     });
   });
 
   return counts;
-};
+}
 
 /* =========================================================
    MONTHLY PURPOSE DATA
 ========================================================= */
 
-const calculateMonthlyPurposeData = (logs, selectedYear) => {
-  const monthlyData = MONTHS.map((month) => ({
-    month: month.short,
-    monthNumber: month.value,
-    Aralinks: 0,
-    Research: 0,
-    "Epic Reading": 0,
-    Reading: 0,
-    "Trivia Search": 0,
-    Print: 0,
-    Others: 0,
-  }));
+function calculateMonthlyPurposeData(logs) {
+  const monthlyData = MONTHS.map((month) => {
+    const item = {
+      month: month.label,
+      short: month.short,
+      monthNumber: month.value,
+      total: 0,
+    };
+
+    PURPOSE_CATEGORIES.forEach((purpose) => {
+      item[purpose] = 0;
+    });
+
+    return item;
+  });
 
   logs.forEach((log) => {
-    const date = parseDate(log.session_in);
+    const date = parseDate(
+      log.session_in || log.created_at
+    );
 
     if (!date) return;
 
-    const year = date.getFullYear();
     const monthNumber = date.getMonth() + 1;
 
-    if (
-      selectedYear !== "all" &&
-      year !== Number(selectedYear)
-    ) {
-      return;
-    }
-
     const monthData = monthlyData.find(
-      (month) => month.monthNumber === monthNumber
+      (month) =>
+        month.monthNumber === monthNumber
     );
 
     if (!monthData) return;
@@ -209,38 +239,28 @@ const calculateMonthlyPurposeData = (logs, selectedYear) => {
     const purposes = getPurposeList(log.purposes);
 
     if (purposes.length === 0) {
-      monthData.Others += 1;
+      monthData.Aralinks += 1;
+      monthData.total += 1;
       return;
     }
 
     purposes.forEach((purpose) => {
-      monthData[getMatchedPurpose(purpose)] += 1;
+      const matchedPurpose =
+        getMatchedPurpose(purpose);
+
+      monthData[matchedPurpose] += 1;
+      monthData.total += 1;
     });
   });
 
   return monthlyData;
-};
+}
 
 /* =========================================================
-   MONTHLY TOTALS
+   PDF COLOR HELPER
 ========================================================= */
 
-const calculateMonthlyTotals = (monthlyData) => {
-  return monthlyData.map((month) => {
-    const total = PURPOSE_CATEGORIES.reduce(
-      (sum, purpose) => sum + month[purpose],
-      0
-    );
-
-    return { ...month, total };
-  });
-};
-
-/* =========================================================
-   COLOR HELPER FOR PDF
-========================================================= */
-
-const hexToRgb = (hex) => {
+function hexToRgb(hex) {
   const cleanHex = hex.replace("#", "");
 
   return {
@@ -248,7 +268,7 @@ const hexToRgb = (hex) => {
     g: parseInt(cleanHex.substring(2, 4), 16),
     b: parseInt(cleanHex.substring(4, 6), 16),
   };
-};
+}
 
 /* =========================================================
    MAIN COMPONENT
@@ -257,66 +277,153 @@ const hexToRgb = (hex) => {
 export default function UsageData() {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
   const [error, setError] = useState("");
+
   const [selectedYear, setSelectedYear] = useState(2026);
   const [searchTerm, setSearchTerm] = useState("");
 
   /* =======================================================
-     FETCH LOGS
+     FETCH ALL LOGS - PAGINATION
   ======================================================= */
 
-  const fetchLogs = async () => {
+  const fetchLogs = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
 
-      const { data, error: supabaseError } = await supabase
-        .from("logs")
-        .select("fullname, purposes, session_in, session_out")
-        .order("session_in", { ascending: false });
+      let allLogs = [];
+      let from = 0;
 
-      if (supabaseError) throw supabaseError;
+      while (true) {
+        const to = from + PAGE_SIZE - 1;
 
-      setLogs(data || []);
-    } catch (err) {
-      console.error("Error loading usage data:", err);
+        const { data, error } = await supabase
+          .from("logs")
+          .select(
+            "id, fullname, purposes, session_in, session_out, created_at"
+          )
+          .order("session_in", {
+            ascending: false,
+            nullsFirst: false,
+          })
+          .order("id", {
+            ascending: true,
+          })
+          .range(from, to);
 
-      setError(
-        "Unable to load usage records. Please try again."
+        if (error) {
+          throw error;
+        }
+
+        const currentPage = data || [];
+
+        allLogs = allLogs.concat(currentPage);
+
+        console.log(
+          `Fetched ${currentPage.length} records. Total: ${allLogs.length}`
+        );
+
+        if (currentPage.length < PAGE_SIZE) {
+          break;
+        }
+
+        from += PAGE_SIZE;
+      }
+
+      setLogs(allLogs);
+
+      console.log(
+        "TOTAL LOGS SUCCESSFULLY FETCHED:",
+        allLogs.length
       );
+
+    } catch (err) {
+      console.error(
+        "Error fetching usage data:",
+        err
+      );
+
+      setLogs([]);
+      setError(
+        err.message ||
+          "Unable to load usage records."
+      );
+
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    fetchLogs();
   }, []);
 
   /* =======================================================
-     FILTER LOGS
+     INITIAL FETCH + REALTIME UPDATES
+  ======================================================= */
+
+  useEffect(() => {
+    fetchLogs();
+
+    const channel = supabase
+      .channel("usage-data-live-updates")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "logs",
+        },
+        (payload) => {
+          console.log(
+            "Supabase log update detected:",
+            payload.eventType
+          );
+
+          fetchLogs();
+        }
+      )
+      .subscribe((status) => {
+        console.log(
+          "Usage Data Realtime Status:",
+          status
+        );
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchLogs]);
+
+  /* =======================================================
+     FILTER BY SCHOOL YEAR AND SEARCH
   ======================================================= */
 
   const filteredLogs = useMemo(() => {
     return logs.filter((log) => {
-      const date = parseDate(log.session_in);
+      const date = parseDate(
+        log.session_in || log.created_at
+      );
 
       if (!date) return false;
 
+      const schoolYear = getSchoolYearStart(date);
+
       const yearMatches =
         selectedYear === "all" ||
-        date.getFullYear() === Number(selectedYear);
+        schoolYear === Number(selectedYear);
 
-      const searchValue = searchTerm.trim().toLowerCase();
+      const search = searchTerm
+        .trim()
+        .toLowerCase();
+
+      const purposes = getPurposeList(log.purposes)
+        .join(" ")
+        .toLowerCase();
 
       const searchMatches =
-        searchValue === "" ||
+        !search ||
         String(log.fullname || "")
           .toLowerCase()
-          .includes(searchValue) ||
-        String(log.purposes || "")
-          .toLowerCase()
-          .includes(searchValue);
+          .includes(search) ||
+        purposes.includes(search);
 
       return yearMatches && searchMatches;
     });
@@ -327,21 +434,12 @@ export default function UsageData() {
   ======================================================= */
 
   const monthlyPurposeData = useMemo(
-    () =>
-      calculateMonthlyPurposeData(
-        filteredLogs,
-        selectedYear
-      ),
-    [filteredLogs, selectedYear]
-  );
-
-  const monthlyTotals = useMemo(
-    () => calculateMonthlyTotals(monthlyPurposeData),
-    [monthlyPurposeData]
+    () => calculateMonthlyPurposeData(filteredLogs),
+    [filteredLogs]
   );
 
   /* =======================================================
-     PURPOSE BREAKDOWN
+     PURPOSE COUNTS
   ======================================================= */
 
   const purposeCounts = useMemo(
@@ -350,57 +448,103 @@ export default function UsageData() {
   );
 
   const purposeBreakdown = useMemo(() => {
-    const total = Object.values(purposeCounts).reduce(
-      (sum, value) => sum + value,
-      0
-    );
+    const total = Object.values(
+      purposeCounts
+    ).reduce((sum, value) => sum + value, 0);
 
-    return PURPOSE_CATEGORIES.map((purpose, index) => {
-      const count = purposeCounts[purpose];
-
-      return {
+    return PURPOSE_CATEGORIES.map(
+      (purpose, index) => ({
         name: purpose,
-        count,
+        count: purposeCounts[purpose],
+
         percentage:
           total > 0
-            ? Number(((count / total) * 100).toFixed(1))
+            ? Number(
+                (
+                  (purposeCounts[purpose] / total) *
+                  100
+                ).toFixed(1)
+              )
             : 0,
+
         order: index,
-      };
-    }).sort((a, b) => {
-      if (b.count !== a.count) return b.count - a.count;
+      })
+    ).sort((a, b) => {
+      if (b.count !== a.count) {
+        return b.count - a.count;
+      }
+
       return a.order - b.order;
     });
   }, [purposeCounts]);
+
+  /* =======================================================
+     TOTAL VISITS
+  ======================================================= */
+
+  const totalVisits = useMemo(
+    () =>
+      Object.values(purposeCounts).reduce(
+        (sum, value) => sum + value,
+        0
+      ),
+    [purposeCounts]
+  );
+
+  /* =======================================================
+     MONTHLY TOTALS
+  ======================================================= */
+
+  const monthlyTotals = useMemo(() => {
+    return monthlyPurposeData.map((month) => ({
+      ...month,
+
+      total: PURPOSE_CATEGORIES.reduce(
+        (sum, purpose) =>
+          sum + month[purpose],
+        0
+      ),
+    }));
+  }, [monthlyPurposeData]);
 
   /* =======================================================
      HIGHEST PURPOSE
   ======================================================= */
 
   const highestPurpose = useMemo(() => {
-    return purposeBreakdown[0] || {
-      name: "—",
-      count: 0,
-    };
-  }, [purposeBreakdown]);
+    if (totalVisits === 0) {
+      return {
+        name: "—",
+        count: 0,
+      };
+    }
+
+    return purposeBreakdown[0];
+  }, [purposeBreakdown, totalVisits]);
 
   /* =======================================================
      HIGHEST MONTH
   ======================================================= */
 
   const highestMonth = useMemo(() => {
-    return (
-      [...monthlyTotals].sort(
-        (a, b) => b.total - a.total
-      )[0] || {
+    const monthsWithData = monthlyTotals.filter(
+      (month) => month.total > 0
+    );
+
+    if (monthsWithData.length === 0) {
+      return {
         month: "—",
         total: 0,
-      }
-    );
+      };
+    }
+
+    return [...monthsWithData].sort(
+      (a, b) => b.total - a.total
+    )[0];
   }, [monthlyTotals]);
 
   /* =======================================================
-     HIGHEST MONTH + PURPOSE
+     HIGHEST MONTH AND PURPOSE
   ======================================================= */
 
   const highestMonthPurpose = useMemo(() => {
@@ -426,23 +570,7 @@ export default function UsageData() {
   }, [monthlyPurposeData]);
 
   /* =======================================================
-     TOTAL VISITS
-  ======================================================= */
-
-  const totalVisits = useMemo(
-    () =>
-      Object.values(purposeCounts).reduce(
-        (sum, value) => sum + value,
-        0
-      ),
-    [purposeCounts]
-  );
-
-  /* =======================================================
      AVERAGE MONTHLY VISITS
-
-     Uses only months that belong to the selected period.
-     For "All Years", totals are aggregated by calendar month.
   ======================================================= */
 
   const averageMonthlyVisits = useMemo(() => {
@@ -453,46 +581,80 @@ export default function UsageData() {
         monthlyTotals.reduce(
           (sum, month) => sum + month.total,
           0
-        ) / monthlyTotals.length
+        ) / 12
       ).toFixed(1)
     );
   }, [monthlyTotals]);
 
   /* =======================================================
-     DASHBOARD CHART DATA
+     CONCLUSION
+  ======================================================= */
+
+  const conclusion = useMemo(() => {
+    const schoolYearLabel =
+      selectedYear === "all"
+        ? "all available school years"
+        : getSchoolYearLabel(
+            Number(selectedYear)
+          );
+
+    if (totalVisits === 0) {
+      return `No registered usage records were recorded for ${schoolYearLabel}.`;
+    }
+
+    return (
+      `For ${schoolYearLabel}, the highest recorded usage occurred in ` +
+      `${highestMonthPurpose.month} under ${highestMonthPurpose.purpose}, ` +
+      `with ${highestMonthPurpose.count} recorded visits. ` +
+      `The most frequently used purpose was ${highestPurpose.name}, ` +
+      `with ${highestPurpose.count} visits. A total of ${totalVisits} ` +
+      `purpose visits was recorded during the selected period, ` +
+      `with an average of ${averageMonthlyVisits} visits per month.`
+    );
+  }, [
+    selectedYear,
+    totalVisits,
+    highestMonthPurpose,
+    highestPurpose,
+    averageMonthlyVisits,
+  ]);
+
+  /* =======================================================
+     CHART DATA
   ======================================================= */
 
   const chartData = useMemo(
     () => ({
       labels: monthlyPurposeData.map(
-        (month) => month.month
+        (month) => month.short
       ),
 
-      datasets: PURPOSE_CATEGORIES.map((purpose) => ({
-        label: purpose,
+      datasets: PURPOSE_CATEGORIES.map(
+        (purpose) => ({
+          label: purpose,
 
-        data: monthlyPurposeData.map(
-          (month) => month[purpose]
-        ),
+          data: monthlyPurposeData.map(
+            (month) => month[purpose]
+          ),
 
-        backgroundColor: PURPOSE_COLORS[purpose],
-        borderWidth: 0,
-        borderSkipped: false,
-        borderRadius: 0,
-        maxBarThickness: 44,
-        categoryPercentage: 0.8,
-        barPercentage: 0.9,
-        stack: "visits",
-      })),
+          backgroundColor:
+            PURPOSE_COLORS[purpose],
+
+          borderWidth: 0,
+          borderSkipped: false,
+          borderRadius: 0,
+          maxBarThickness: 44,
+          categoryPercentage: 0.8,
+          barPercentage: 0.9,
+          stack: "visits",
+        })
+      ),
     }),
     [monthlyPurposeData]
   );
 
   /* =======================================================
-     DASHBOARD CHART OPTIONS
-
-     Shows the actual number inside every visible segment.
-     Shows each month's total above the stacked bar.
+     CHART OPTIONS
   ======================================================= */
 
   const chartOptions = useMemo(
@@ -546,9 +708,12 @@ export default function UsageData() {
         },
 
         datalabels: {
-          display: (context) => {
-            return Number(context.dataset.data[context.dataIndex]) > 0;
-          },
+          display: (context) =>
+            Number(
+              context.dataset.data[
+                context.dataIndex
+              ]
+            ) > 0,
 
           color: "#ffffff",
           anchor: "center",
@@ -561,9 +726,8 @@ export default function UsageData() {
             weight: "bold",
           },
 
-          formatter: (value) => {
-            return Number(value) > 0 ? value : "";
-          },
+          formatter: (value) =>
+            Number(value) > 0 ? value : "",
         },
       },
 
@@ -576,8 +740,13 @@ export default function UsageData() {
             text: "Month",
 
             font: {
-              size: 13,
-              weight: "600",
+              size: 12,
+            },
+          },
+
+          ticks: {
+            font: {
+              size: 12,
             },
           },
 
@@ -592,6 +761,10 @@ export default function UsageData() {
 
           ticks: {
             precision: 0,
+
+            font: {
+              size: 12,
+            },
           },
 
           title: {
@@ -599,8 +772,7 @@ export default function UsageData() {
             text: "Number of Visits",
 
             font: {
-              size: 13,
-              weight: "600",
+              size: 12,
             },
           },
 
@@ -614,68 +786,107 @@ export default function UsageData() {
   );
 
   /* =======================================================
-     PDF GRAPH
-
-     Draws a stacked bar chart using the same purpose colors
-     and monthly values as the dashboard.
-     Each segment with enough space gets its actual count.
-     Each month also gets its total above the bar.
+     PDF GRAPH - INCREASED HEIGHT
   ======================================================= */
 
-  const drawPurposeGraph = (doc, startY) => {
-    const graphX = 25;
-    const graphY = startY;
-    const graphWidth = 160;
-    const graphHeight = 65;
-    const bottomY = graphY + graphHeight;
+  function drawPDFGraph(pdf, startY) {
+    const pageWidth =
+      pdf.internal.pageSize.getWidth();
 
-    const maxTotal = Math.max(
-      1,
-      ...monthlyTotals.map((month) => month.total)
+    const margin = 14;
+
+    const chartLeft = margin + 15;
+    const chartRight = pageWidth - margin - 4;
+
+    const chartWidth = chartRight - chartLeft;
+
+    // Increased from 88 mm to 105 mm
+    const chartHeight = 105;
+
+    const chartTop = startY;
+    const chartBottom = chartTop + chartHeight;
+
+    const maxValue = Math.max(
+      ...monthlyTotals.map(
+        (month) => month.total
+      ),
+      1
     );
 
-    // Round the vertical scale up to a readable whole number.
-    const tickStep = Math.max(1, Math.ceil(maxTotal / 5));
-    const axisMax = tickStep * 5;
+    const tickStep = Math.max(
+      1,
+      Math.ceil(maxValue / 5)
+    );
 
-    // Chart heading
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(10);
-    doc.setTextColor(30, 41, 59);
+    const roundedMax = tickStep * 5;
 
-    doc.text("Number of Visits", graphX, graphY - 5);
+    /* Y-AXIS AND GRID */
 
-    // Horizontal grid lines and Y-axis labels
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(7);
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(10);
+    pdf.setTextColor(70, 70, 70);
 
     for (let i = 0; i <= 5; i++) {
       const value = tickStep * i;
-      const y = bottomY - (value / axisMax) * graphHeight;
 
-      doc.setDrawColor(226, 232, 240);
-      doc.setLineWidth(0.2);
-      doc.line(graphX, y, graphX + graphWidth, y);
+      const gridY =
+        chartBottom -
+        (chartHeight / 5) * i;
 
-      doc.setTextColor(90, 90, 90);
-      doc.text(String(value), graphX - 3, y + 2, {
-        align: "right",
-      });
+      pdf.setDrawColor(220, 225, 230);
+      pdf.setLineWidth(0.25);
+
+      pdf.line(
+        chartLeft,
+        gridY,
+        chartRight,
+        gridY
+      );
+
+      pdf.text(
+        String(value),
+        chartLeft - 3,
+        gridY + 1.5,
+        { align: "right" }
+      );
     }
 
-    // Chart border and axis labels
-    doc.setDrawColor(200, 205, 210);
-    doc.line(graphX, graphY, graphX, bottomY);
-    doc.line(graphX, bottomY, graphX + graphWidth, bottomY);
+    /* AXES */
 
-    const slotWidth = graphWidth / monthlyTotals.length;
-    const barWidth = Math.min(8, slotWidth * 0.65);
+    pdf.setDrawColor(70, 70, 70);
+    pdf.setLineWidth(0.4);
 
-    monthlyTotals.forEach((month, monthIndex) => {
+    pdf.line(
+      chartLeft,
+      chartTop,
+      chartLeft,
+      chartBottom
+    );
+
+    pdf.line(
+      chartLeft,
+      chartBottom,
+      chartRight,
+      chartBottom
+    );
+
+    /* BARS */
+
+    const slotWidth =
+      chartWidth / monthlyTotals.length;
+
+    const barWidth = Math.min(
+      11,
+      slotWidth * 0.72
+    );
+
+    monthlyTotals.forEach((month, index) => {
       const centerX =
-        graphX + slotWidth * monthIndex + slotWidth / 2;
+        chartLeft +
+        slotWidth * index +
+        slotWidth / 2;
 
-      let currentY = bottomY;
+      let currentY = chartBottom;
 
       PURPOSE_CATEGORIES.forEach((purpose) => {
         const value = month[purpose];
@@ -683,14 +894,18 @@ export default function UsageData() {
         if (value <= 0) return;
 
         const segmentHeight =
-          (value / axisMax) * graphHeight;
+          (value / roundedMax) * chartHeight;
 
-        const segmentY = currentY - segmentHeight;
-        const { r, g, b } = hexToRgb(PURPOSE_COLORS[purpose]);
+        const segmentY =
+          currentY - segmentHeight;
 
-        doc.setFillColor(r, g, b);
+        const { r, g, b } = hexToRgb(
+          PURPOSE_COLORS[purpose]
+        );
 
-        doc.rect(
+        pdf.setFillColor(r, g, b);
+
+        pdf.rect(
           centerX - barWidth / 2,
           segmentY,
           barWidth,
@@ -698,16 +913,15 @@ export default function UsageData() {
           "F"
         );
 
-        // Label the individual segment when there is enough room.
-        if (segmentHeight >= 5 && barWidth >= 5) {
-          doc.setFont("helvetica", "bold");
-          doc.setFontSize(6);
-          doc.setTextColor(255, 255, 255);
+        if (segmentHeight >= 7) {
+          pdf.setFont("helvetica", "bold");
+          pdf.setFontSize(8);
+          pdf.setTextColor(255, 255, 255);
 
-          doc.text(
+          pdf.text(
             String(value),
             centerX,
-            segmentY + segmentHeight / 2 + 1.5,
+            segmentY + segmentHeight / 2 + 1.2,
             { align: "center" }
           );
         }
@@ -715,343 +929,421 @@ export default function UsageData() {
         currentY = segmentY;
       });
 
-      // Total visits above the stacked bar.
+      /* MONTHLY TOTAL ABOVE BAR */
+
       if (month.total > 0) {
         const totalY =
-          bottomY - (month.total / axisMax) * graphHeight;
+          chartBottom -
+          (month.total / roundedMax) *
+            chartHeight;
 
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(7);
-        doc.setTextColor(25, 25, 25);
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(10);
+        pdf.setTextColor(0, 0, 0);
 
-        doc.text(
+        pdf.text(
           String(month.total),
           centerX,
-          Math.max(graphY + 1, totalY - 2),
+          Math.max(chartTop - 2, totalY - 2),
           { align: "center" }
         );
       }
 
-      // Month label
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(7);
-      doc.setTextColor(70, 70, 70);
+      /* MONTH LABEL */
 
-      doc.text(month.month, centerX, bottomY + 5, {
-        align: "center",
-      });
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(10);
+      pdf.setTextColor(60, 60, 60);
+
+      pdf.text(
+        month.short,
+        centerX,
+        chartBottom + 6,
+        { align: "center" }
+      );
     });
 
-    // X-axis title
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
-    doc.setTextColor(70, 70, 70);
-
-    doc.text(
-      "Month",
-      graphX + graphWidth / 2,
-      bottomY + 12,
-      { align: "center" }
-    );
-
-    return bottomY + 17;
-  };
+    return chartBottom + 11;
+  }
 
   /* =======================================================
-     PDF LEGEND
-
-     Uses the same purpose colors as the dashboard.
+     PDF GRAPH LEGEND - SMALLER AND ALIGNED
   ======================================================= */
 
-  const drawPurposeLegend = (doc, startY) => {
-    const pageWidth = doc.internal.pageSize.width;
-    const leftMargin = 20;
-    const rightMargin = 20;
-    const availableWidth = pageWidth - leftMargin - rightMargin;
+  function drawPDFLegend(pdf, startY) {
+    const pageWidth =
+      pdf.internal.pageSize.getWidth();
 
-    let x = leftMargin;
-    let y = startY;
+    const margin = 14;
+    const availableWidth =
+      pageWidth - margin * 2;
 
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(7);
+    // Smaller legend typography and color squares
+    const fontSize = 9;
+    const squareSize = 3;
+    const squareTextGap = 2.2;
+    const itemGap = 5;
+    const rowHeight = 6.5;
+
+    const textY = startY;
+
+    let x = margin;
+    let y = textY;
+
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(fontSize);
 
     PURPOSE_CATEGORIES.forEach((purpose) => {
-      const labelWidth = doc.getTextWidth(purpose);
-      const itemWidth = 5 + 3 + labelWidth + 8;
+      const labelWidth =
+        pdf.getTextWidth(purpose);
 
-      if (x + itemWidth > leftMargin + availableWidth) {
-        x = leftMargin;
-        y += 7;
+      const itemWidth =
+        squareSize +
+        squareTextGap +
+        labelWidth +
+        itemGap;
+
+      // Move to the next row if there is not enough space
+      if (
+        x + itemWidth - itemGap >
+        margin + availableWidth
+      ) {
+        x = margin;
+        y += rowHeight;
       }
 
-      const { r, g, b } = hexToRgb(PURPOSE_COLORS[purpose]);
+      const { r, g, b } = hexToRgb(
+        PURPOSE_COLORS[purpose]
+      );
 
-      doc.setFillColor(r, g, b);
-      doc.rect(x, y - 3, 4, 4, "F");
+      // Draw smaller color square
+      pdf.setFillColor(r, g, b);
 
-      doc.setTextColor(70, 70, 70);
-      doc.text(purpose, x + 7, y);
+      pdf.rect(
+        x,
+        y - 2.5,
+        squareSize,
+        squareSize,
+        "F"
+      );
+
+      // Align label vertically with color square
+      pdf.setTextColor(40, 40, 40);
+
+      pdf.text(
+        purpose,
+        x + squareSize + squareTextGap,
+        y
+      );
 
       x += itemWidth;
     });
 
-    return y + 5;
-  };
+    // Return the correct position after all legend rows
+    const totalRows =
+      Math.floor((y - textY) / rowHeight) + 1;
+
+    return textY + totalRows * rowHeight + 1;
+  }
 
   /* =======================================================
-     PDF FOOTER
+     PDF EXPORT
   ======================================================= */
 
-  const addFooter = (doc) => {
-    const totalPages = doc.internal.getNumberOfPages();
-
-    for (let page = 1; page <= totalPages; page++) {
-      doc.setPage(page);
-
-      const pageHeight = doc.internal.pageSize.height;
-      const pageWidth = doc.internal.pageSize.width;
-
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(8);
-      doc.setTextColor(110, 110, 110);
-
-      doc.text(
-        "Holy Family Academy Angeles City - Grade School IMC",
-        20,
-        pageHeight - 10
+  function exportPDF() {
+    if (totalVisits === 0) {
+      alert(
+        "No usage data available to export."
       );
-
-      doc.text(
-        `Page ${page} of ${totalPages}`,
-        pageWidth - 20,
-        pageHeight - 10,
-        { align: "right" }
-      );
-    }
-  };
-
-  /* =======================================================
-     PDF EXPORT ONLY
-  ======================================================= */
-
-  const exportPDF = () => {
-    if (filteredLogs.length === 0) {
-      alert("There are no records to export.");
       return;
     }
 
-    const doc = new jsPDF();
+    try {
+      setExporting(true);
 
-    const yearLabel =
-      selectedYear === "all"
-        ? "All Years"
-        : String(selectedYear);
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "letter",
+      });
 
-    const pageWidth = doc.internal.pageSize.width;
+      const pageWidth =
+        pdf.internal.pageSize.getWidth();
 
-    // Header
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(16);
-    doc.setTextColor(11, 42, 74);
+      const pageHeight =
+        pdf.internal.pageSize.getHeight();
 
-    doc.text(
-      "Holy Family Academy Angeles City",
-      pageWidth / 2,
-      18,
-      { align: "center" }
-    );
+      const margin = 14;
+      const contentWidth =
+        pageWidth - margin * 2;
 
-    doc.setFontSize(12);
+      const yearTitle =
+        selectedYear === "all"
+          ? "FOR ALL SCHOOL YEARS"
+          : `FOR THE SCHOOL YEAR ${selectedYear}-${Number(selectedYear) + 1}`;
 
-    doc.text(
-      "Grade School IMC",
-      pageWidth / 2,
-      25,
-      { align: "center" }
-    );
+      /* HEADER */
 
-    doc.setFontSize(15);
+      pdf.setTextColor(0, 0, 0);
 
-    doc.text(
-      "Usage Data Report",
-      pageWidth / 2,
-      35,
-      { align: "center" }
-    );
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(12);
 
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.setTextColor(80, 80, 80);
+      pdf.text(
+        "Holy Family Academy",
+        pageWidth / 2,
+        13,
+        { align: "center" }
+      );
 
-    doc.text(`Year: ${yearLabel}`, 20, 45);
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(12);
 
-    doc.text(
-      `Generated: ${new Date().toLocaleString()}`,
-      20,
-      51
-    );
+      pdf.text(
+        "Angeles City",
+        pageWidth / 2,
+        19,
+        { align: "center" }
+      );
 
-    // Monthly chart
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(12);
-    doc.setTextColor(20, 20, 20);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(12);
 
-    doc.text("Monthly Usage by Purpose", 20, 62);
+      pdf.text(
+        "STATISTICAL REPRESENTATION ON THE ACTIVITY ON INTERNET",
+        pageWidth / 2,
+        27,
+        { align: "center" }
+      );
 
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
-    doc.setTextColor(90, 90, 90);
+      pdf.text(
+        "AND RESEARCH SECTION",
+        pageWidth / 2,
+        33,
+        { align: "center" }
+      );
 
-    doc.text(
-      "Stacked monthly visits by purpose. Numbers inside bars show individual purpose counts; numbers above bars show monthly totals.",
-      20,
-      68
-    );
+      pdf.setFontSize(12);
 
-    const graphEndY = drawPurposeGraph(doc, 79);
-    const legendEndY = drawPurposeLegend(doc, graphEndY + 5);
+      pdf.text(
+        yearTitle,
+        pageWidth / 2,
+        40,
+        { align: "center" }
+      );
 
-    // Summary
-    let summaryStart = legendEndY + 5;
+      pdf.setDrawColor(0, 0, 0);
+      pdf.setLineWidth(0.4);
 
-    if (summaryStart > 155) {
-      doc.addPage();
-      summaryStart = 20;
+      pdf.line(
+        margin,
+        45,
+        pageWidth - margin,
+        45
+      );
+
+      /* GRAPH TITLE */
+
+      let y = 54;
+
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(12);
+      pdf.setTextColor(0, 0, 0);
+
+      pdf.text(
+        selectedYear === "all"
+          ? "Monthly Usage - All School Years"
+          : `Monthly Usage - SY ${selectedYear}-${Number(selectedYear) + 1}`,
+        margin,
+        y
+      );
+
+      y += 6;
+
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(10);
+      pdf.setTextColor(75, 75, 75);
+
+      const graphDescription =
+        "Monthly visits by purpose, arranged from June to May. Values above the bars indicate monthly totals.";
+
+      const descriptionLines =
+        pdf.splitTextToSize(
+          graphDescription,
+          contentWidth
+        );
+
+      descriptionLines.forEach((line) => {
+        pdf.text(line, margin, y);
+        y += 5;
+      });
+
+      y += 5;
+
+      /* ENLARGED GRAPH */
+
+      y = drawPDFGraph(pdf, y);
+
+      /* LEGEND */
+
+      y += 3;
+
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(11);
+      pdf.setTextColor(0, 0, 0);
+
+      pdf.text(
+        "Purpose Categories",
+        margin,
+        y
+      );
+
+      y += 6;
+
+      y = drawPDFLegend(pdf, y);
+
+      /* CONCLUSION */
+
+      y += 3;
+
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(11);
+      pdf.setTextColor(0, 0, 0);
+
+      pdf.text(
+        "Conclusion",
+        margin,
+        y
+      );
+
+      y += 6;
+
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(10);
+      pdf.setTextColor(0, 0, 0);
+
+      const conclusionLines =
+        pdf.splitTextToSize(
+          conclusion,
+          contentWidth
+        );
+
+      const lineHeight = 4.5;
+
+      conclusionLines.forEach((line) => {
+        pdf.text(line, margin, y);
+        y += lineHeight;
+      });
+
+      /* SIGNATURES */
+
+      const signatureY = pageHeight - 28;
+
+      if (y > signatureY - 15) {
+        console.warn(
+          "Conclusion is too long for the preferred one-page layout."
+        );
+      }
+
+      const signatureWidth = 65;
+      const signatureGap = 25;
+
+      const totalSignatureWidth =
+        signatureWidth * 2 + signatureGap;
+
+      const signatureStartX =
+        (pageWidth - totalSignatureWidth) / 2;
+
+      const signatures = [
+        {
+          name: "Airon Lingad",
+          position: "Library IT Staff",
+        },
+        {
+          name: "Ms. Remedios Baking",
+          position: "IMC Coordinator",
+        },
+      ];
+
+      signatures.forEach((person, index) => {
+        const x =
+          signatureStartX +
+          index * (signatureWidth + signatureGap);
+
+        const centerX =
+          x + signatureWidth / 2;
+
+        pdf.setDrawColor(0, 0, 0);
+        pdf.setLineWidth(0.35);
+
+        pdf.line(
+          x,
+          signatureY + 4,
+          x + signatureWidth,
+          signatureY + 4
+        );
+
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(10);
+        pdf.setTextColor(0, 0, 0);
+
+        pdf.text(
+          person.name,
+          centerX,
+          signatureY + 3,
+          { align: "center" }
+        );
+
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(10);
+
+        pdf.text(
+          person.position,
+          centerX,
+          signatureY + 11,
+          { align: "center" }
+        );
+      });
+
+      /* FOOTER */
+
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(9);
+      pdf.setTextColor(90, 90, 90);
+
+      pdf.text(
+        "Grade School IMC - Usage Data Report",
+        pageWidth / 2,
+        pageHeight - 7,
+        { align: "center" }
+      );
+
+      /* SAVE */
+
+      const filename =
+        selectedYear === "all"
+          ? "IMC_Usage_Data_All_School_Years.pdf"
+          : `IMC_Usage_Data_SY_${selectedYear}-${Number(selectedYear) + 1}.pdf`;
+
+      pdf.save(filename);
+
+    } catch (err) {
+      console.error(
+        "PDF export error:",
+        err
+      );
+
+      alert(
+        "Unable to export the PDF report."
+      );
+
+    } finally {
+      setExporting(false);
     }
-
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(12);
-    doc.setTextColor(20, 20, 20);
-
-    doc.text("Summary", 20, summaryStart);
-
-    autoTable(doc, {
-      startY: summaryStart + 5,
-      theme: "grid",
-
-      head: [["Metric", "Result"]],
-
-      body: [
-        ["Total Visits", String(totalVisits)],
-        [
-          "Most Used Purpose",
-          `${highestPurpose.name} (${highestPurpose.count} visits)`,
-        ],
-        [
-          "Highest Usage Month",
-          `${highestMonth.month} (${highestMonth.total} visits)`,
-        ],
-        [
-          "Highest Month-Purpose",
-          `${highestMonthPurpose.purpose} in ${highestMonthPurpose.month} (${highestMonthPurpose.count} visits)`,
-        ],
-        [
-          "Average Monthly Visits",
-          String(averageMonthlyVisits),
-        ],
-      ],
-
-      styles: {
-        fontSize: 9,
-        cellPadding: 3,
-      },
-
-      headStyles: {
-        fillColor: [11, 42, 74],
-      },
-
-      margin: {
-        left: 20,
-        right: 20,
-        bottom: 18,
-      },
-    });
-
-    // Conclusion
-    let conclusionY = doc.lastAutoTable.finalY + 10;
-
-    if (conclusionY > 255) {
-      doc.addPage();
-      conclusionY = 20;
-    }
-
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(12);
-    doc.setTextColor(20, 20, 20);
-
-    doc.text("Conclusion", 20, conclusionY);
-
-    const conclusionText =
-      highestMonthPurpose.count > 0
-        ? `The usage records show that ${highestMonthPurpose.purpose} had the highest number of recorded purpose visits during ${highestMonthPurpose.month}, with ${highestMonthPurpose.count} visits. This summary is based on the registered IMC usage records and the selected filters.`
-        : "There are no sufficient usage records to determine the highest monthly purpose.";
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-
-    const conclusionLines = doc.splitTextToSize(
-      conclusionText,
-      pageWidth - 40
-    );
-
-    doc.text(conclusionLines, 20, conclusionY + 7, {
-      lineHeightFactor: 1.5,
-    });
-
-    // Purpose breakdown
-    let purposeTableY =
-      conclusionY + 10 + conclusionLines.length * 5;
-
-    if (purposeTableY > 255) {
-      doc.addPage();
-      purposeTableY = 20;
-    }
-
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(12);
-
-    doc.text("Purpose Breakdown", 20, purposeTableY);
-
-    autoTable(doc, {
-      startY: purposeTableY + 5,
-      theme: "grid",
-
-      head: [
-        ["Rank", "Purpose", "Visits", "Percentage"],
-      ],
-
-      body: purposeBreakdown.map((item, index) => [
-        index + 1,
-        item.name,
-        item.count,
-        `${item.percentage}%`,
-      ]),
-
-      styles: {
-        fontSize: 9,
-        cellPadding: 3,
-      },
-
-      headStyles: {
-        fillColor: [11, 42, 74],
-      },
-
-      margin: {
-        left: 20,
-        right: 20,
-        bottom: 18,
-      },
-    });
-
-    addFooter(doc);
-
-    doc.save(
-      `IMC-Usage-Data-${yearLabel.replace(/\s/g, "-")}.pdf`
-    );
-  };
+  }
 
   /* =======================================================
-     LOADING
+     LOADING STATE
   ======================================================= */
 
   if (loading) {
@@ -1066,7 +1358,7 @@ export default function UsageData() {
   }
 
   /* =======================================================
-     ERROR
+     ERROR STATE
   ======================================================= */
 
   if (error) {
@@ -1093,6 +1385,7 @@ export default function UsageData() {
 
   return (
     <div className="usage-data-page">
+
       {/* HEADER */}
 
       <div className="usage-data-page-header">
@@ -1100,14 +1393,16 @@ export default function UsageData() {
           <h1>Usage Data</h1>
 
           <p>
-            View monthly visits and identify the most
-            frequently used IMC services and purposes.
+            View monthly visits by school year, from June
+            through May, and identify the most frequently
+            used IMC services and purposes.
           </p>
         </div>
 
         <button
           className="usage-data-refresh"
           onClick={fetchLogs}
+          disabled={loading}
         >
           ↻ Refresh
         </button>
@@ -1116,8 +1411,11 @@ export default function UsageData() {
       {/* FILTER BAR */}
 
       <div className="usage-data-filter-bar">
+
         <div className="usage-data-filter-group">
-          <label htmlFor="usage-year">Year</label>
+          <label htmlFor="usage-year">
+            School Year
+          </label>
 
           <select
             id="usage-year"
@@ -1130,70 +1428,96 @@ export default function UsageData() {
               )
             }
           >
-            <option value="all">All Years</option>
+            <option value="all">
+              All School Years
+            </option>
 
-            {YEARS.map((year) => (
+            {SCHOOL_YEAR_STARTS.map((year) => (
               <option key={year} value={year}>
-                {year}
+                {getSchoolYearLabel(year)}
               </option>
             ))}
           </select>
         </div>
 
         <div className="usage-data-filter-group usage-data-search-group">
-          <label htmlFor="usage-search">Search</label>
+          <label htmlFor="usage-search">
+            Search
+          </label>
 
           <input
             id="usage-search"
             type="text"
             placeholder="Search name or purpose..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) =>
+              setSearchTerm(e.target.value)
+            }
           />
         </div>
 
         <div className="usage-data-showing">
-          Showing <strong>{filteredLogs.length}</strong>{" "}
+          Showing{" "}
+          <strong>{filteredLogs.length}</strong>{" "}
           registered records
         </div>
+
       </div>
 
       {/* MONTHLY GRAPH */}
 
       <div className="usage-data-panel">
+
         <div className="usage-data-panel-header">
           <div>
             <h2>Monthly Usage by Purpose</h2>
 
             <p>
-              Numbers inside each colored bar represent visits
-              for that purpose. The number above each bar is
-              the monthly total.
+              School-year view runs from June through May.
+              Each color represents a different purpose.
             </p>
           </div>
         </div>
 
         <div className="usage-data-chart">
-          <Bar data={chartData} options={chartOptions} />
+          {totalVisits === 0 ? (
+            <div className="usage-data-empty">
+              No usage records found for the selected
+              school year.
+            </div>
+          ) : (
+            <Bar
+              data={chartData}
+              options={chartOptions}
+            />
+          )}
         </div>
+
       </div>
 
       {/* MONTHLY HIGHLIGHTS */}
 
       <div className="usage-data-month-highlights">
+
         <div className="usage-data-highlight-header">
           <div>
             <h2>Monthly Highlights</h2>
-            <p>The highest purpose for each month.</p>
+
+            <p>
+              The highest recorded purpose for each month.
+            </p>
           </div>
         </div>
 
         <div className="usage-data-month-grid">
+
           {monthlyTotals.map((month) => {
             const highestForMonth =
               PURPOSE_CATEGORIES.reduce(
                 (highest, purpose) => {
-                  if (month[purpose] > highest.count) {
+                  if (
+                    month[purpose] > highest.count
+                  ) {
                     return {
                       purpose,
                       count: month[purpose],
@@ -1208,21 +1532,18 @@ export default function UsageData() {
                 }
               );
 
-            const fullMonth =
-              MONTHS.find(
-                (item) => item.value === month.monthNumber
-              )?.label || month.month;
-
             return (
               <div
                 className="usage-data-month-card"
                 key={month.monthNumber}
               >
+
                 <div className="usage-data-month-name">
-                  {fullMonth}
+                  {month.month}
                 </div>
 
                 <div className="usage-data-month-purpose">
+
                   {highestForMonth.count > 0 ? (
                     <>
                       <span
@@ -1233,7 +1554,7 @@ export default function UsageData() {
                               highestForMonth.purpose
                             ],
                         }}
-                      ></span>
+                      />
 
                       <strong>
                         {highestForMonth.purpose}
@@ -1242,6 +1563,7 @@ export default function UsageData() {
                   ) : (
                     <span>No visits</span>
                   )}
+
                 </div>
 
                 <div className="usage-data-month-count">
@@ -1251,25 +1573,34 @@ export default function UsageData() {
                 </div>
 
                 <div className="usage-data-month-total">
-                  Total: <strong>{month.total}</strong>
+                  Total:{" "}
+                  <strong>{month.total}</strong>
                 </div>
+
               </div>
             );
           })}
+
         </div>
+
       </div>
 
       {/* SUMMARY */}
 
       <div className="usage-data-summary-section">
+
         <div className="usage-data-summary-header">
           <div>
             <h2>Summary</h2>
-            <p>Overview of registered IMC usage.</p>
+
+            <p>
+              Overview of registered IMC usage.
+            </p>
           </div>
         </div>
 
         <div className="usage-data-summary">
+
           <div className="usage-data-summary-card">
             <span>Total Visits</span>
             <strong>{totalVisits}</strong>
@@ -1278,18 +1609,24 @@ export default function UsageData() {
           <div className="usage-data-summary-card">
             <span>Most Used Purpose</span>
             <strong>{highestPurpose.name}</strong>
-            <small>{highestPurpose.count} visits</small>
+            <small>
+              {highestPurpose.count} visits
+            </small>
           </div>
 
           <div className="usage-data-summary-card">
             <span>Highest Usage Month</span>
             <strong>{highestMonth.month}</strong>
-            <small>{highestMonth.total} total visits</small>
+            <small>
+              {highestMonth.total} total visits
+            </small>
           </div>
 
           <div className="usage-data-summary-card">
             <span>Highest Month-Purpose</span>
-            <strong>{highestMonthPurpose.purpose}</strong>
+            <strong>
+              {highestMonthPurpose.purpose}
+            </strong>
             <small>
               {highestMonthPurpose.count} visits in{" "}
               {highestMonthPurpose.month}
@@ -1300,23 +1637,28 @@ export default function UsageData() {
             <span>Average Monthly Visits</span>
             <strong>{averageMonthlyVisits}</strong>
           </div>
+
         </div>
+
       </div>
 
       {/* PURPOSE BREAKDOWN */}
 
       <div className="usage-data-panel">
+
         <div className="usage-data-panel-header">
           <div>
             <h2>Purpose Breakdown</h2>
+
             <p>
-              Actual recorded purpose visits for the selected
-              period.
+              Recorded purpose visits for the selected
+              school year.
             </p>
           </div>
         </div>
 
         <div className="usage-data-breakdown-table">
+
           <table>
             <thead>
               <tr>
@@ -1330,6 +1672,7 @@ export default function UsageData() {
             <tbody>
               {purposeBreakdown.map((item, index) => (
                 <tr key={item.name}>
+
                   <td>{index + 1}</td>
 
                   <td>
@@ -1339,7 +1682,10 @@ export default function UsageData() {
                         backgroundColor:
                           PURPOSE_COLORS[item.name],
                       }}
-                    ></span>{" "}
+                    />
+
+                    {" "}
+
                     {item.name}
                   </td>
 
@@ -1348,34 +1694,45 @@ export default function UsageData() {
                   </td>
 
                   <td>{item.percentage}%</td>
+
                 </tr>
               ))}
             </tbody>
           </table>
+
         </div>
+
       </div>
 
-      {/* EXPORT: PDF ONLY */}
+      {/* EXPORT */}
 
       <div className="usage-data-export-section">
+
         <div>
-          <h2>Export</h2>
+          <h2>Export Report</h2>
 
           <p>
-            Download the usage data analysis and monthly graph
-            as a PDF report.
+            Generate a one-page PDF report with the enlarged
+            monthly graph, conclusion, and signatures.
           </p>
         </div>
 
         <div className="usage-data-export-buttons">
+
           <button
             className="usage-data-export-button pdf"
             onClick={exportPDF}
+            disabled={exporting || totalVisits === 0}
           >
-            Export PDF
+            {exporting
+              ? "Exporting..."
+              : "Export PDF"}
           </button>
+
         </div>
+
       </div>
+
     </div>
   );
 }
