@@ -160,9 +160,23 @@ export default function Admin() {
             further notice regarding system availability.
           </p>
 
-          <div className="maintenance-footer">
-            Thank you for your cooperation.
+
+        <div className="maintenance-footer">
+          <p className="footer-message">
+            Thank you for your patience and cooperation.
+          </p>
+
+          <div className="developer-signature">
+            <br />
+            <u style={{ color: "#111827", textUnderlineOffset: "3px" }}>
+              Airon Lingad
+            </u> <br />
+            <span style={{ color: "#6b7280", fontSize: "12px" }}>
+              System Developer
+            </span>
           </div>
+        </div>
+
 
         </div>
       </div>
