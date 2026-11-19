@@ -12,7 +12,7 @@ import UsageData from "./UsageData";
 import RecordsData from "./RecordsData";
 
 const ADMIN_USERNAME = "libraryadmin";
-const ADMIN_PASSWORD = "imcpassword";
+const ADMIN_PASSWORD = "localhost";
 
 // ==========================================
 // CLEAN NAME
@@ -78,7 +78,7 @@ export default function AdminControl() {
       setPassword("");
       setLoginError("");
     } else {
-      setLoginError("Invalid username or password.");
+      setLoginError("Our system is temporarily unavailable as we undergo maintenance and transition to a localhost environment to enhance data security, improve system stability, and ensure better protection of information.");
     }
   }
 
