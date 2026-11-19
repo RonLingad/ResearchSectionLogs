@@ -5,161 +5,123 @@ export default function Admin() {
   return (
     <>
       <style>{`
-        * {
-          box-sizing: border-box;
-        }
-
-        .maintenance-container {
+        .maintenance-page {
           min-height: 100vh;
           display: flex;
+          flex-direction: column;
           align-items: center;
           justify-content: center;
           padding: 20px;
-          background: #f8fafc;
-          font-family: Arial, Helvetica, sans-serif;
-        }
-
-        .maintenance-card {
-          width: 100%;
-          max-width: 580px;
-          padding: 45px 35px;
           text-align: center;
-          background: #ffffff;
-          border: 1px solid #e5e7eb;
-          border-radius: 10px;
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+          font-family: Arial, Helvetica, sans-serif;
+          background: #fff;
         }
 
         .maintenance-icon {
-          width: 70px;
-          height: 70px;
-          margin: 0 auto 22px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background: #fef2f2;
-          border-radius: 50%;
+          font-size: 40px;
           color: #dc2626;
-          font-size: 32px;
+          margin-bottom: 20px;
         }
 
         .maintenance-badge {
-          display: inline-block;
-          padding: 7px 14px;
           color: #b91c1c;
           background: #fee2e2;
-          border-radius: 4px;
+          padding: 7px 14px;
           font-size: 11px;
-          font-weight: 700;
+          font-weight: bold;
           letter-spacing: 1px;
+          border-radius: 4px;
         }
 
-        .maintenance-card h1 {
-          margin: 22px 0 12px;
+        .maintenance-page h1 {
           color: #991b1b;
-          font-size: 28px;
-          font-weight: 700;
+          font-size: 26px;
+          margin: 20px 0 10px;
         }
 
-        .maintenance-subtitle {
-          margin-bottom: 18px;
-          color: #374151;
-          font-size: 15px;
-          font-weight: 600;
-        }
-
-        .maintenance-description {
+        .maintenance-page p {
           color: #6b7280;
           font-size: 14px;
           line-height: 1.7;
+          max-width: 550px;
         }
 
         .maintenance-notice {
-          margin-top: 25px;
-          padding: 18px;
+          margin-top: 20px;
+          padding: 15px;
+          max-width: 550px;
           background: #fef2f2;
           border-left: 3px solid #dc2626;
           text-align: left;
         }
 
         .maintenance-notice strong {
-          display: block;
-          margin-bottom: 7px;
           color: #991b1b;
           font-size: 13px;
         }
 
         .maintenance-notice p {
-          margin: 0;
-          color: #6b7280;
-          font-size: 13px;
-          line-height: 1.7;
-        }
-
-        .maintenance-thanks {
-          margin-top: 22px;
-          color: #6b7280;
-          font-size: 13px;
-          line-height: 1.7;
+          margin-bottom: 0;
         }
 
         .maintenance-footer {
           margin-top: 25px;
-          padding-top: 18px;
+          padding-top: 15px;
           border-top: 1px solid #e5e7eb;
-          color: #b91c1c;
+          width: 100%;
+          max-width: 350px;
+        }
+
+        .maintenance-footer .footer-message {
           font-size: 13px;
-          font-weight: 600;
+        }
+
+        .developer-signature {
+          margin-top: 15px;
+          display: flex;
+          flex-direction: column;
+          gap: 5px;
         }
 
         @media (max-width: 600px) {
-          .maintenance-card {
-            padding: 35px 22px;
-          }
-
-          .maintenance-card h1 {
-            font-size: 24px;
+          .maintenance-page h1 {
+            font-size: 22px;
           }
         }
       `}</style>
 
-      <div className="maintenance-container">
-        <div className="maintenance-card">
+      <div className="maintenance-page">
 
-          <div className="maintenance-icon">
-            ⚙
-          </div>
+        <div className="maintenance-icon">
+          ⚙
+        </div>
 
-          <span className="maintenance-badge">
-            SYSTEM MAINTENANCE
-          </span>
+        <span className="maintenance-badge">
+          SYSTEM MAINTENANCE
+        </span>
 
-          <h1>System Temporarily Unavailable</h1>
+        <h1>System Temporarily Unavailable</h1>
 
-          <p className="maintenance-subtitle">
-            Administrative access is temporarily disabled.
+        <p>
+          Administrative access is temporarily disabled.
+          The system is currently undergoing maintenance and
+          migration to a locally hosted environment to strengthen
+          data security and improve system reliability.
+        </p>
+
+        <div className="maintenance-notice">
+          <strong>Maintenance Notice</strong>
+          <p>
+            Administrative services will remain unavailable
+            while system updates and security improvements
+            are being implemented.
           </p>
+        </div>
 
-          <p className="maintenance-description">
-            The system is currently undergoing maintenance and
-            migration to a locally hosted environment to strengthen
-            data security and improve system reliability.
-          </p>
-
-          <div className="maintenance-notice">
-            <strong>Maintenance Notice</strong>
-            <p>
-              Administrative services will remain unavailable
-              while system updates and security improvements
-              are being implemented.
-            </p>
-          </div>
-
-          <p className="maintenance-thanks">
-            We apologize for any inconvenience. Please wait for
-            further notice regarding system availability.
-          </p>
-
+        <p style={{ marginTop: "20px" }}>
+          We apologize for the inconvenience. Please wait for
+          further notice regarding system availability.
+        </p>
 
         <div className="maintenance-footer">
           <p className="footer-message">
@@ -167,20 +129,23 @@ export default function Admin() {
           </p>
 
           <div className="developer-signature">
-            <br />
-            <u style={{ color: "#111827", textUnderlineOffset: "3px" }}>
+            <u style={{
+              color: "#111827",
+              textUnderlineOffset: "3px"
+            }}>
               Airon Lingad
-            </u> <br />
-            <span style={{ color: "#6b7280", fontSize: "12px" }}>
+            </u>
+
+            <span style={{
+              color: "#6b7280",
+              fontSize: "12px"
+            }}>
               System Developer
             </span>
           </div>
         </div>
 
-
-        </div>
       </div>
     </>
   );
 }
-
